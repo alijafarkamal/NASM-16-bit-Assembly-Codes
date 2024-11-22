@@ -1,0 +1,29 @@
+     1                                  ; sorting a list of ten numb   xers using bubble sort
+     2                                  [org 0x0100]
+     3 00000000 EB04                    			jmp start
+     4 00000002 0500                    num: dw 5
+     5 00000004 0000                    result: dw 0
+     6                                  
+     7                                  start:		
+     8 00000006 A1[0200]                		mov ax,[num]			;getting number whose factorial is to be calculated value
+     9 00000009 89C2                    		mov dx,ax			;total sum
+    10                                  
+    11                                  outerloop:			
+    12 0000000B BB0000                  		mov bx,0			;counter
+    13 0000000E 89D1                    		mov cx,dx			;tracker
+    14 00000010 83E801                  		sub ax,1			;number giver
+    15 00000013 BA0000                  		mov dx,0			;inititalized to zero
+    16 00000016 83F801                  		cmp ax,0x01   			;campare to 1
+    17 00000019 740B                    		je outOfLoop
+    18                                  		
+    19 0000001B 01C2                    innerloop:	add dx,ax			;factorial counting
+    20 0000001D 83C301                  		add bx,1			;counting
+    21 00000020 39CB                    		cmp bx,cx			;checking if equal
+    22 00000022 75F7                    		jne innerloop			;again run iteration if not equal
+    23 00000024 EBE5                    		jmp outerloop			
+    24                                  		
+    25                                  outOfLoop:
+    26 00000026 890E[0400]              		mov [result],cx			;result stored
+    27                                  		
+    28 0000002A B8004C                  mov ax, 0x4c00 ; terminate program
+    29 0000002D CD21                    int 0x21

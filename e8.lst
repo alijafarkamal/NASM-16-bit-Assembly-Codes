@@ -1,0 +1,13 @@
+     1                                  
+     2                                  [org 0x0100]
+     3                                  
+     4 00000000 B074                    mov al, 0x74
+     5 00000002 B35A                    mov bl, 0x5A
+     6 00000004 38C3                    cmp bl, al	
+     7 00000006 7E03                    jle skip
+     8                                  
+     9 00000008 BB5800                  mov bx,88
+    10                                  skip:
+    11                                  
+    12 0000000B B8004C                  mov ax,0x4C00
+    13 0000000E CD21                    int 0x21

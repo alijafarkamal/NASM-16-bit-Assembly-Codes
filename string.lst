@@ -1,0 +1,43 @@
+     1                                  [org 0x0100]
+     2 00000000 EB33                        jmp start
+     3                                  
+     4                                  movepixels:
+     5 00000002 50                          push ax
+     6 00000003 53                          push bx
+     7 00000004 51                          push cx
+     8 00000005 56                          push si
+     9 00000006 57                          push di
+    10 00000007 06                          push es
+    11 00000008 1E                          push ds
+    12                                  
+    13 00000009 B800B8                      mov ax, 0xB800
+    14 0000000C 8EC0                        mov es, ax
+    15 0000000E 8ED8                        mov ds, ax
+    16 00000010 BE0000                      mov si, 0
+    17 00000013 BF5000                      mov di, 80
+    18 00000016 BB0000                      mov bx, 0
+    19                                  
+    20                                  loop1:
+    21 00000019 B95000                      mov cx, 80
+    22 0000001C FC                          cld
+    23 0000001D F3A4                        rep movsb
+    24 0000001F 83C650                      add si, 80
+    25 00000022 83C750                      add di, 80
+    26                                  
+    27 00000025 83C301                      add bx, 1
+    28 00000028 83FB19                      cmp bx, 25
+    29 0000002B 75EC                        jne loop1
+    30                                  
+    31 0000002D 1F                          pop ds
+    32 0000002E 07                          pop es
+    33 0000002F 5F                          pop di
+    34 00000030 5E                          pop si
+    35 00000031 59                          pop cx
+    36 00000032 5B                          pop bx
+    37 00000033 58                          pop ax
+    38 00000034 C3                          ret
+    39                                  
+    40                                  start:
+    41 00000035 E8CAFF                      call movepixels
+    42 00000038 B8004C                      mov ax, 0x4c00
+    43 0000003B CD21                        int 0x21

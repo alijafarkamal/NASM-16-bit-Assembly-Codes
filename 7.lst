@@ -1,0 +1,163 @@
+     1                                  [org 0x0100]
+     2 00000000 E9AB02                  jmp program_start
+     3                                  
+     4 00000003 0000<rep F0h>           screen_store: times 240 dw 0
+     5                                  
+     6                                  ;-----------------------------------------------------------------
+     7                                  ; subroutine to scroll up the screen
+     8                                  ; take the number of lines to scroll as parameter
+     9                                  ;-----------------------------------------------------------------
+    10 000001E3 55                      scroll_screen_up: push bp
+    11 000001E4 89E5                    mov bp,sp
+    12 000001E6 50                      push ax
+    13 000001E7 51                      push cx
+    14 000001E8 56                      push si
+    15 000001E9 57                      push di
+    16 000001EA 06                      push es
+    17 000001EB 1E                      push ds
+    18                                  
+    19 000001EC B800B8                      mov ax, 0xB800           ; Set ES to video memory segment
+    20 000001EF 8EC0                        mov es, ax
+    21                                  
+    22 000001F1 BF0000                      mov di, 0                ; Starting offset in ES (top left of screen)
+    23 000001F4 BE[0300]                    mov si, screen_store     ; Starting offset for `screen_store` storage
+    24 000001F7 BB0300                      mov bx, 3                ; Number of rows to copy
+    25                                  
+    26                                  loop_outer:
+    27 000001FA B95000                      mov cx, 80               ; Number of words (characters) per row to copy
+    28                                  copy_row_loop:
+    29 000001FD 268B05                      mov ax, word[es:di]      ; Load word from video memory
+    30 00000200 8904                        mov word[si], ax         ; Store word in `screen_store`
+    31 00000202 83C602                      add si, 2                ; Move to next word in `screen_store`
+    32 00000205 83C702                      add di, 2                ; Move to next word in video memory
+    33 00000208 E2F3                        loop copy_row_loop       ; Repeat for entire row
+    34                                  
+    35 0000020A 4B                          dec bx
+    36 0000020B 75ED                        jnz loop_outer           ; Repeat for the next row if bx is not zero
+    37                                  
+    38                                  ; Continue with the rest of your program...
+    39 0000020D BF0000                  mov di,0;
+    40 00000210 BE0000                  mov si,0;
+    41                                  
+    42 00000213 B85000                  mov ax, 80                  ; load chars per row in ax
+    43 00000216 F66604                  mul byte [bp+4]             ; calculate source position
+    44 00000219 89C6                    mov si, ax                  ; load source position in si
+    45 0000021B 56                      push si                     ; save position for later use
+    46 0000021C D1E6                    shl si, 1                   ; convert to byte offset
+    47                                  
+    48 0000021E B9D007                  mov cx, 2000                ; number of screen locations
+    49 00000221 29C1                    sub cx, ax                  ; count of words to move
+    50                                  
+    51 00000223 B800B8                  mov ax, 0xb800
+    52 00000226 8EC0                    mov es, ax                  ; point es to video base
+    53 00000228 8ED8                    mov ds, ax                  ; point ds to video base
+    54                                  
+    55 0000022A 31FF                    xor di, di                  ; point di to top left column
+    56 0000022C FC                      cld                         ; set auto increment mode
+    57 0000022D F3A5                    rep movsw                   ; scroll up
+    58                                  
+    59 0000022F B82007                  mov ax, 0x0720              ; space in normal attribute
+    60 00000232 59                      pop cx                      ; count of positions to clear
+    61 00000233 F3AB                    rep stosw                   ; clear the scrolled space
+    62                                  
+    63 00000235 1F                      pop ds
+    64 00000236 07                      pop es
+    65 00000237 5F                      pop di
+    66 00000238 5E                      pop si
+    67 00000239 59                      pop cx
+    68 0000023A 58                      pop ax
+    69 0000023B 5D                      pop bp
+    70 0000023C C20200                  ret 2
+    71                                  
+    72 0000023F 55                      scroll_screen_down: push bp
+    73 00000240 89E5                    mov bp,sp
+    74 00000242 60                      pusha;
+    75                                  
+    76 00000243 B85000                  mov ax, 80                  ; load chars per row in ax
+    77 00000246 F66604                  mul byte [bp+4]             ; calculate source position
+    78 00000249 50                      push ax                     ; save position for later use
+    79 0000024A D1E0                    shl ax, 1                   ; convert to byte offset
+    80                                  
+    81 0000024C BE9E0F                  mov si, 3998                ; last location on the screen
+    82 0000024F 29C6                    sub si, ax                  ; load source position in si
+    83                                  
+    84 00000251 B9A00F                  mov cx, 4000                ; number of screen locations
+    85 00000254 29C1                    sub cx, ax                  ; count of words to move
+    86 00000256 D1E8                    shr ax,1
+    87                                  
+    88 00000258 B800B8                  mov ax, 0xb800
+    89 0000025B 8EC0                    mov es, ax                  ; point es to video base
+    90 0000025D 8ED8                    mov ds, ax                  ; point ds to video base
+    91 0000025F BF9E0F                  mov di, 3998                ; point di to lower right column
+    92                                  
+    93 00000262 3E8B04                  screen_print_loop: mov ax, [ds:si];
+    94 00000265 268905                  mov [es:di], ax;
+    95 00000268 83EE02                  sub si, 2;
+    96 0000026B 83EF02                  sub di, 2;
+    97 0000026E E2F2                    loop screen_print_loop;
+    98                                  
+    99 00000270 B800B8                  mov ax, 0xb800
+   100 00000273 8EC0                    mov es, ax                  ; point es to video base
+   101                                  
+   102 00000275 59                      pop cx;
+   103                                  
+   104 00000276 8CC8                    mov ax, cs;
+   105 00000278 8ED8                    mov ds, ax;
+   106                                  
+   107 0000027A BE[0300]                mov si, screen_store;
+   108 0000027D BF0000                  mov di, 0;
+   109                                  
+   110 00000280 8B04                    restore_loop: mov ax, word[si];
+   111 00000282 268905                  mov word[es:di], ax;
+   112 00000285 83C702                  add di, 2
+   113 00000288 83C602                  add si, 2;
+   114 0000028B E2F3                    loop restore_loop;
+   115                                  
+   116 0000028D 61                      popa;
+   117 0000028E 5D                      pop bp
+   118 0000028F C20200                  ret 2
+   119                                  
+   120                                  delay:
+   121 00000292 51                          push cx
+   122 00000293 B9FFFF                      mov cx, 0xFFFF
+   123                                  loop_delay_1:
+   124 00000296 E2FE                        loop loop_delay_1
+   125 00000298 B9FFFF                      mov cx, 0xFFFF
+   126                                  loop_delay_2:
+   127 0000029B E2FE                        loop loop_delay_2
+   128 0000029D B9FFFF                      mov cx, 0xFFFF
+   129                                  loop_delay_3:
+   130 000002A0 E2FE                        loop loop_delay_3
+   131 000002A2 B9FFFF                      mov cx, 0xFFFF
+   132                                  loop_delay_4:
+   133 000002A5 E2FE                        loop loop_delay_4
+   134 000002A7 B9FFFF                      mov cx, 0xFFFF
+   135                                  loop_delay_5:
+   136 000002AA E2FE                        loop loop_delay_5
+   137 000002AC 59                          pop cx
+   138 000002AD C3                          ret
+   139                                  
+   140                                  program_start:
+   141                                  
+   142                                  continual_operation:
+   143 000002AE B80300                          mov ax,3
+   144 000002B1 50                      push ax                      ; push number of lines to scroll
+   145                                  
+   146 000002B2 E82EFF                     call scroll_screen_up     ; call the scroll up subroutine
+   147                                  
+   148 000002B5 E8DAFF                  call delay;
+   149 000002B8 E8D7FF                  call delay;
+   150 000002BB E8D4FF                  call delay;
+   151 000002BE E8D1FF                  call delay;
+   152 000002C1 B80300                  mov ax,3
+   153 000002C4 50                      push ax                      ; push number of lines to scroll
+   154 000002C5 E877FF                  call scroll_screen_down      ; call scroll down subroutine
+   155 000002C8 E8C7FF                  call delay                   ; Add delay again between down and up
+   156 000002CB E8C4FF                      call delay
+   157 000002CE E8C1FF                      call delay
+   158 000002D1 E8BEFF                      call delay
+   159                                  
+   160 000002D4 EBD8                        jmp continual_operation  ; Loop infinitely to continue oscillation
+   161                                  
+   162 000002D6 B8004C                  mov ax, 0x4c00               ; terminate program
+   163 000002D9 CD21                    int 0x21

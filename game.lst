@@ -1,0 +1,718 @@
+     1                                  [org 0x0100]
+     2                                  
+     3                                  
+     4                                  graphics:
+     5                                  	; mov cx,80 * 25   
+     6                                  	; mov ax,0xB800
+     7                                  	; mov es,ax
+     8                                  	; mov ds,ax
+     9                                  	; mov di,buffer
+    10                                  	; mov si,0
+    11                                  	; rep movsw
+    12 00000000 B81300                  	mov ax, 0x0013	;for 320*200 pixels
+    13 00000003 CD10                    	int 0x10				;switches to this mode
+    14 00000005 B800A0                  	mov ax, 0xA000	;seg address for video memory
+    15 00000008 8EC0                    	mov es, ax			;access to video buffer
+    16 0000000A E8(BF00)                	call background
+    17 0000000D E9(3705)                	jmp start
+    18 00000010 0000                    data_segment: dw 0
+    19 00000012 <res 7D0h>              buffer: resb 80 * 25    
+    19          ******************       warning: uninitialized space declared in .text section: zeroing [-w+zeroing]
+    20 000007E2 CC79                    bird_pos: dw 31180
+    21 000007E4 9E7D                    beak_pos: dw 32158
+    22 000007E6 18BF                    rect_pos: dw 48920
+    23 000007E8 0000                    collision_detected: dw 0
+    24 000007EA 0000                    rect_pos1: dw 0
+    25 000007EC 0000                    rect_pos2: dw 0
+    26 000007EE 0000                    rect_pos_down: dw 0
+    27 000007F0 0000                    rect_pos_down1: dw 0
+    28 000007F2 0000                    rect_pos_down2: dw 0
+    29 000007F4 0000                    isAnimating: dw 0
+    30 000007F6 44                      BirdDirection: db 'D'
+    31 000007F7 0000                    bird_position_holder: dw 0
+    32                                  section .data
+    33 00000000 417373656D626C6572-         GameTitle db 'Assembler Aviator', 0
+    33 00000009 2041766961746F7200 
+    34 00000012 526F6C6C204E756D62-         RollNumbers db 'Roll Numbers: 23L-0815, 23L-0576', 0
+    34 0000001B 6572733A2032334C2D-
+    34 00000024 303831352C2032334C-
+    34 0000002D 2D3035373600       
+    35 00000033 446576656C6F706564-         Names db 'Developed by: Ali Jafar,Tayyab Khalil', 0
+    35 0000003C 2062793A20416C6920-
+    35 00000045 4A616661722C546179-
+    35 0000004E 796162204B68616C69-
+    35 00000057 6C00               
+    36 00000059 53656D65737465723A-         Semester db 'Semester: Fall 2024', 0
+    36 00000062 2046616C6C20323032-
+    36 0000006B 3400               
+    37 0000006D 507265737320555020-         Instructions db 'Press UP ARROW to move up,ESC to quit', 0
+    37 00000076 4152524F5720746F20-
+    37 0000007F 6D6F76652075702C45-
+    37 00000088 534320746F20717569-
+    37 00000091 7400               
+    38 00000093 507265737320616E79-         StartMessage db 'Press any key to start...', 0
+    38 0000009C 206B657920746F2073-
+    38 000000A5 746172742E2E2E00   
+    39                                  
+    40                                  
+    41                                  PrintStringCentered:
+    42 000000AD 60                          pusha
+    43 000000AE B40E                        mov ah, 0Eh         ; BIOS teletype output function
+    44 000000B0 B700                        mov bh, 0           ; Page number
+    45 000000B2 B30F                        mov bl, 15          ; White text color
+    46                                  
+    47                                  print_loop:
+    48 000000B4 AC                          lodsb               ; Load next character from string
+    49 000000B5 3C00                        cmp al, 0           ; Check for null terminator
+    50 000000B7 7404                        je done_print
+    51 000000B9 CD10                        int 10h             ; Print character
+    52 000000BB EBF7                        jmp print_loop
+    53                                  
+    54                                  done_print:
+    55 000000BD 61                          popa
+    56 000000BE C3                          ret
+    57                                  background:
+    58 000000BF 31FF                        xor di, di          ; Start at the beginning of video memory
+    59 000000C1 B900FA                      mov cx, 320 * 200   ; Total pixels (320x200 screen)
+    60 000000C4 B002                        mov al, 2   ; Red background, light yellow text
+    61 000000C6 F3AA                        rep stosb           ; Fill the screen with color
+    62 000000C8 C3                          ret
+    63                                  ; --- Display Introduction Screen ---
+    64                                  DisplayIntroduction:
+    65 000000C9 E8F3FF                      call background     ; Ensure background is visible
+    66 000000CC B607                        mov dh, 7           ; Start printing vertically centered (row 7)
+    67 000000CE B203                        mov dl, 3         ; Start printing horizontally centered (column 10)
+    68 000000D0 BE[0000]                    mov si, GameTitle
+    69 000000D3 E82900                      call PrintStringAtPosition
+    70                                  
+    71 000000D6 B609                        mov dh, 9
+    72 000000D8 BE[1200]                    mov si, RollNumbers
+    73 000000DB E82100                      call PrintStringAtPosition
+    74                                  
+    75 000000DE B60B                        mov dh, 11
+    76 000000E0 BE[3300]                    mov si, Names
+    77 000000E3 E81900                      call PrintStringAtPosition
+    78                                  
+    79 000000E6 B60D                        mov dh, 13
+    80 000000E8 BE[5900]                    mov si, Semester
+    81 000000EB E81100                      call PrintStringAtPosition
+    82 000000EE B60F                        mov dh, 15
+    83 000000F0 BE[6D00]                    mov si, Instructions
+    84 000000F3 E80900                      call PrintStringAtPosition
+    85 000000F6 B611                        mov dh, 17
+    86 000000F8 BE[9300]                    mov si, StartMessage
+    87 000000FB E80100                      call PrintStringAtPosition
+    88 000000FE C3                          ret
+    89                                  ; --- Print String at Specified Position ---
+    90                                  PrintStringAtPosition:
+    91 000000FF 60                          pusha
+    92 00000100 B402                        mov ah, 02h         ; Set cursor position function
+    93 00000102 CD10                        int 10h
+    94                                  
+    95 00000104 B40E                        mov ah, 0Eh         ; BIOS teletype output function
+    96 00000106 B700                        mov bh, 0           ; Page number
+    97 00000108 B30F                        mov bl, 15          ; White text color
+    98                                  
+    99                                  print_position_loop:
+   100 0000010A AC                          lodsb               ; Load next character from string
+   101 0000010B 3C00                        cmp al, 0           ; Check for null terminator
+   102 0000010D 7404                        je done_position_print
+   103 0000010F CD10                        int 10h             ; Print character
+   104 00000111 EBF7                        jmp print_position_loop
+   105                                  
+   106                                  done_position_print:
+   107 00000113 61                          popa
+   108 00000114 C3                          ret 
+   109                                  
+   110                                  
+   111                                  ShowExitConfirmation:
+   112 00000115 B40E                        mov ah, 0Eh
+   113 00000117 B045                        mov al, 'E'
+   114 00000119 CD10                        int 10h
+   115 0000011B B078                        mov al, 'x'
+   116 0000011D CD10                        int 10h
+   117 0000011F B069                        mov al, 'i'
+   118 00000121 CD10                        int 10h
+   119 00000123 B074                        mov al, 't'
+   120 00000125 CD10                        int 10h
+   121 00000127 B03F                        mov al, '?'
+   122 00000129 CD10                        int 10h
+   123                                      ; Wait for 'Y' or 'N' key press
+   124 0000012B B400                        mov ah, 0
+   125 0000012D CD16                        int 16h
+   126 0000012F 3C59                        cmp al, 'Y'
+   127 00000131 7401                        je exit_game
+   128 00000133 C3                          ret
+   129                                  exit_game:
+   130                                  		; mov cx,80 * 25   
+   131                                  	; mov ax,0xB800
+   132                                  	; mov es,ax
+   133                                  	; mov ds,ax
+   134                                  	; mov si,buffer
+   135                                  	; mov si,0
+   136                                  	; rep movsw
+   137 00000134 31FF                        xor di, di                			;Start at the top of video memory
+   138 00000136 B9007D                      mov cx, 320 * 200 / 2     ;Number of words to write (160,000 bytes / 2)
+   139 00000139 B82007                      mov ax, 0x0720            ; Attribute: White text on black background, character: space (0x20)
+   140 0000013C F3AB                        rep stosw                 ; Fill the screen with spaces
+   141 0000013E B8004C                      mov ax, 0x4C00            ; DOS function to terminate the program
+   142 00000141 CD21                        int 0x21                  ; Call DOS interrupt to exit the game
+   143                                  
+   144                                  ; exit_game:
+   145                                  	; xor di,di
+   146                                  	; mov cx,320*200
+   147                                  	; mov ax,0x0720
+   148                                  	; rep stosb
+   149                                  	; mov ax, 0x4C00        ; DOS function to terminate the program
+   150                                      ; int 0x21              ; Call DOS interrupt to exit the game
+   151                                  
+   152                                  upper_part:
+   153 00000143 31FF                    	xor di, di				;points to start
+   154 00000145 B00B                    	mov al, 11			;color
+   155 00000147 B9004B                  	mov cx, 320*60	;range
+   156 0000014A F3AA                    	rep stosb				;instruction to color this range
+   157 0000014C C3                      	ret
+   158                                  
+   159                                  medium_part:
+   160 0000014D BF004B                  	mov di, 320*60		;points to specific point
+   161 00000150 B009                    	mov al, 9              ;color
+   162 00000152 B96054                  	mov cx, 360*60    ;range
+   163 00000155 F3AA                    	rep stosb             ;instruction to color this range
+   164 00000157 C3                      	ret
+   165                                  lower_part:
+   166 00000158 BF0096                  	mov di, 320*120	;points to specific point
+   167 0000015B B001                    	mov al, 1              ;color
+   168 0000015D B90064                  	mov cx, 320*80    ;range
+   169 00000160 F3AA                    	rep stosb             ;instruction to color this range
+   170 00000162 C3                      	ret
+   171                                  bird_body:
+   172 00000163 60                      	pusha
+   173 00000164 BB0C00                      mov bx,12            ;height of bird body
+   174 00000167 8B36[E207]                  mov si, [bird_pos]      ;points to the middle of screen
+   175 0000016B B82A84                  	mov ax,0x842A
+   176 0000016E 268904                  	mov [es:si],ax
+   177                                  	body:
+   178 00000171 89F7                        mov di, si           	;Start at pixel 31180 
+   179 00000173 B00E                        mov al, 14			;Color index for yellow
+   180 00000175 B91200                      mov cx, 18			;width of body
+   181 00000178 F3AA                        rep stosb
+   182 0000017A 83EB01                      sub bx,1				;decrement the length counter
+   183 0000017D 81C64001                    add si, 320           ;move to the next row since one line consists of 320 pixels
+   184 00000181 83FB00                      cmp bx ,0 
+   185 00000184 75EB                        jnz body
+   186 00000186 81EE8002                	sub si,640
+   187 0000018A 8936[F707]              	mov [bird_position_holder],si
+   188 0000018E 61                      	popa
+   189 0000018F BB0200                      mov bx,2              ;height of bird's peak
+   190 00000192 8B36[E407]                  mov si, [beak_pos]       ;points to the top left corner of bird's peak
+   191 00000196 C3                      	ret	
+   192                                  bird_beak:
+   193 00000197 89F7                        mov di, si             ;Start at pixel 32158 
+   194 00000199 B00A                        mov al, 10            ;Color index for lightgreen
+   195 0000019B B90400                      mov cx, 4             ;width of beak
+   196 0000019E F3AA                        rep stosb
+   197 000001A0 83EB01                      sub bx,1               ;decrement the length counter
+   198 000001A3 81C64001                    add si, 320            ;move to the nex row since one line consists of 320 pixels
+   199 000001A7 83FB00                      cmp bx ,0 
+   200 000001AA 75EB                        jnz bird_beak
+   201                                  
+   202 000001AC BE0000                      mov si,0	
+   203 000001AF BB3200                      mov bx,50             ;height of lower rectangle
+   204 000001B2 8B36[E607]                  mov si, [rect_pos]       ;position of rectangle 
+   205 000001B6 C3                      	ret	
+   206                                  green_rect_down:
+   207 000001B7 89F7                        mov di, si              ;Start at pixel 38400 
+   208 000001B9 B002                        mov al, 2               ;Color index for Green
+   209 000001BB B91C00                      mov cx, 28             ;width of body
+   210 000001BE F3AA                        rep stosb
+   211 000001C0 83EB01                      sub bx,1                ;decrement the length counter
+   212 000001C3 81C64001                    add si, 320             ;move to uithe nex row since one line consists of 320 pixels
+   213 000001C7 83FB00                      cmp bx ,0 
+   214 000001CA 75EB                        jnz green_rect_down
+   215 000001CC BE0000                      mov si,0	
+   216 000001CF BB4600                      mov bx,70             ;height of rectangle
+   217 000001D2 BE1801                      mov si, 00280        ;position of upper rectangle 
+   218 000001D5 C3                      	ret
+   219                                  green_rect_up:
+   220 000001D6 89F7                    	mov di, si               ;Start at pixel 00920 
+   221 000001D8 B002                    	mov al, 2                ;Color index for Green
+   222 000001DA B91C00                  	mov cx, 28             ;width of body
+   223 000001DD F3AA                    	rep stosb
+   224 000001DF 83EB01                  	sub bx,1                 ;decrement the length counter
+   225 000001E2 81C64001                	add si, 320             ;move to the nex row since one line consists of 320 pixels
+   226 000001E6 83FB00                  	cmp bx ,0 
+   227 000001E9 75EB                    	jnz green_rect_up
+   228                                  
+   229 000001EB BA3200                      mov dx,50				;width of triangle
+   230 000001EE BE7800                      mov si,120            	;starting row
+   231 000001F1 C3                      	ret
+   232                                  wave_loop:
+   233 000001F2 89F0                    	mov ax, si
+   234 000001F4 C1E008                  	shl ax, 8					;multiply by 256
+   235 000001F7 89F3                    	mov bx, si
+   236 000001F9 C1E306                  	shl bx, 6					;multiply by 64
+   237 000001FC 01D8                    	add ax, bx				;point on video memory where it will start making wave
+   238 000001FE 89C7                    	mov di, ax				;starting point copies to di				
+   239 00000200 83FA00                  	cmp dx, 0
+   240 00000203 7E0E                    	jle end_wave			;exit
+   241 00000205 B009                    	mov al, 9					;color
+   242 00000207 89D1                    	mov cx, dx				;width
+   243 00000209 F3AA                    	rep stosb
+   244 0000020B 83EA02                  	sub dx, 2					;width of triangle
+   245 0000020E 83C601                  	add si, 1					;loop to go to next row
+   246 00000211 EBDF                    	jmp wave_loop
+   247                                  	end_wave:
+   248 00000213 BA3200                  	mov dx, 50
+   249 00000216 BE7800                  	mov si, 120
+   250 00000219 BD3200                  	mov bp, 50
+   251 0000021C C3                      	ret
+   252                                  wave_loop_inverted:
+   253 0000021D 89F0                    	mov ax, si
+   254 0000021F C1E008                  	shl ax, 8					;multiply by 256
+   255 00000222 89F3                    	mov bx, si
+   256 00000224 C1E306                  	shl bx, 6					;multiply by 64
+   257 00000227 01D8                    	add ax, bx				;calculate video memory start point
+   258 00000229 89C7                    	mov di, ax				;set DI for start
+   259 0000022B 01EF                    	add di, bp				;adjust DI by BP offset
+   260 0000022D 83FA00                  	cmp dx, 0
+   261 00000230 7E11                    	jle end_wave_inverted		;exit if DX is zero
+   262 00000232 B009                    	mov al, 9					;set color
+   263 00000234 89D1                    	mov cx, dx				;set width
+   264 00000236 F3AA                    	rep stosb					;draw line
+   265 00000238 83EA02                  	sub dx, 2					;decrease width
+   266 0000023B 83C502                  	add bp, 2					;move start right
+   267 0000023E 83C601                  	add si, 1					;next row
+   268 00000241 EBDA                    	jmp wave_loop_inverted		;repeat loop
+   269                                  	end_wave_inverted:
+   270 00000243 BA3200                  	mov dx, 50				;reset DX
+   271 00000246 BE7800                  	mov si, 120				;reset SI
+   272 00000249 C3                      	ret
+   273                                  wave_loop1:	
+   274 0000024A 89F0                    	mov ax, si         		;copy si
+   275 0000024C C1E008                  	shl ax, 8            		;multiply
+   276 0000024F 89F3                    	mov bx, si         		
+   277 00000251 C1E306                  	shl bx, 6            		;multiply
+   278 00000254 01D8                    	add ax, bx         		
+   279 00000256 89C7                    	mov di, ax         		;set di
+   280 00000258 83C764                  	add di, 100        		
+   281 0000025B 83FA00                  	cmp dx, 0          		;check DX
+   282 0000025E 7E0E                    	jle end_wave1    		;exit
+   283 00000260 B009                    	mov al, 9           		;color
+   284 00000262 89D1                    	mov cx, dx        		;width
+   285 00000264 F3AA                    	rep stosb           		;draw
+   286 00000266 83EA02                  	sub dx, 2           		;decrease
+   287 00000269 83C601                  	add si, 1            		;next row
+   288 0000026C EBDC                    	jmp wave_loop1        ;loop
+   289                                  	end_wave1:
+   290 0000026E BA3200                  	mov dx, 50          		;reset DX
+   291 00000271 BE7800                  	mov si, 120         		;reset SI
+   292 00000274 BD9600                  	mov bp, 150        		;set BP
+   293 00000277 C3                      	ret                 
+   294                                  wave_loop_inverted1:
+   295 00000278 89F0                    	mov ax, si            	;copy SI
+   296 0000027A C1E008                  	shl ax, 8           		;multiply
+   297 0000027D 89F3                    	mov bx, si          		;copy SI
+   298 0000027F C1E306                  	shl bx, 6          			;multiply
+   299 00000282 01D8                    	add ax, bx          		;calculate
+   300 00000284 89C7                    	mov di, ax          		;set DI
+   301 00000286 01EF                    	add di, bp          		;offset
+   302 00000288 83FA00                  	cmp dx, 0          		;check DX
+   303 0000028B 7E11                    	jle end_wave_inverted1 ; exit
+   304 0000028D B009                    	mov al, 9           		;color
+   305 0000028F 89D1                    	mov cx, dx          		;width
+   306 00000291 F3AA                    	rep stosb           		;draw
+   307 00000293 83EA02                  	sub dx, 2           		;decrease
+   308 00000296 83C502                  	add bp, 2          		;increment BP
+   309 00000299 83C601                  	add si, 1           		;increment to next row
+   310 0000029C EBDA                    	jmp wave_loop_inverted1 ; loop
+   311                                  	end_wave_inverted1:
+   312 0000029E BA3200                  	mov dx, 50          ; reset DX
+   313 000002A1 BE7800                  	mov si, 120         ; reset SI
+   314 000002A4 C3                      	ret 
+   315                                  wave_loop2:	
+   316 000002A5 89F0                    	mov ax, si          		;copy SI
+   317 000002A7 C1E008                  	shl ax, 8            		;multiply
+   318 000002AA 89F3                    	mov bx, si          		;copy SI
+   319 000002AC C1E306                  	shl bx, 6            		;multiply
+   320 000002AF 01D8                    	add ax, bx          		;calculate
+   321 000002B1 89C7                    	mov di, ax          		;set DI
+   322 000002B3 81C7C800                	add di, 200         		;offset
+   323 000002B7 81FEC800                	cmp si, 200        		 ;check SI
+   324 000002BB 7D13                    	jge end_wave2    		 ;exit
+   325 000002BD 83FA00                  	cmp dx, 0           		;check DX
+   326 000002C0 7E0E                    	jle end_wave2     		 ;exit
+   327 000002C2 B009                    	mov al, 9           		 ;color
+   328 000002C4 89D1                    	mov cx, dx         		 ;width
+   329 000002C6 F3AA                    	rep stosb           		 ;draw
+   330 000002C8 83EA02                  	sub dx, 2           		 ;decrease
+   331 000002CB 83C601                  	add si, 1           		 ;increment to next row
+   332 000002CE EBD5                    	jmp wave_loop2        ;loop
+   333                                  	end_wave2:
+   334 000002D0 BA3200                  	mov dx, 50          		;reset DX
+   335 000002D3 BE7800                  	mov si, 120         		;reset SI
+   336 000002D6 BDFA00                  	mov bp, 250        		;set BP
+   337 000002D9 C3                      	ret              
+   338                                  
+   339                                  wave_loop_inverted2:
+   340 000002DA 89F0                    	mov ax, si          	;copy SI
+   341 000002DC C1E008                  	shl ax, 8           	;multiply
+   342 000002DF 89F3                    	mov bx, si          	;copy SI
+   343 000002E1 C1E306                  	shl bx, 6          		;multiply
+   344 000002E4 01D8                    	add ax, bx          	;calculate
+   345 000002E6 89C7                    	mov di, ax          	;set DI
+   346 000002E8 01EF                    	add di, bp          	;offset
+   347 000002EA 81FEC800                	cmp si, 200         ;check SI
+   348 000002EE 7D16                    	jge end_wave_inverted2 ;exit
+   349 000002F0 83FA00                  	cmp dx, 0           ;check DX
+   350 000002F3 7E11                    	jle end_wave_inverted2 ;exit
+   351 000002F5 B009                    	mov al, 9           	;color
+   352 000002F7 89D1                    	mov cx, dx          	;width
+   353 000002F9 F3AA                    	rep stosb           	;draw
+   354 000002FB 83EA02                  	sub dx, 2           	;decrease
+   355 000002FE 83C502                  	add bp, 2           	;increment BP
+   356 00000301 83C601                  	add si, 1           	;increment
+   357 00000304 EBD4                    	jmp wave_loop_inverted2 ;loop
+   358                                  	end_wave_inverted2:
+   359 00000306 BA3200                  	mov dx, 50          ;reset DX
+   360 00000309 BE7800                  	mov si, 120         ;reset SI
+   361 0000030C C3                      	ret                
+   362                                  wave_loop3:
+   363 0000030D 89F0                    	mov ax, si          	;copy SI
+   364 0000030F C1E008                  	shl ax, 8           	;multiply
+   365 00000312 89F3                    	mov bx, si          	;copy SI
+   366 00000314 C1E306                  	shl bx, 6           	;multiply
+   367 00000317 01D8                    	add ax, bx          	;calculate
+   368 00000319 89C7                    	mov di, ax          	;set DI
+   369 0000031B 81C72C01                	add di, 300         	;offset
+   370 0000031F 81FEC800                	cmp si, 200         	;check SI
+   371 00000323 7D13                    	jge end_wave3      ;exit
+   372 00000325 83FA00                  	cmp dx, 0           	;check DX
+   373 00000328 7E0E                    	jle end_wave3       ;exit
+   374 0000032A B009                    	mov al, 9          	;color
+   375 0000032C 89D1                    	mov cx, dx          	;width
+   376 0000032E F3AA                    	rep stosb           	;draw
+   377 00000330 83EA02                  	sub dx, 2           	;decrease
+   378 00000333 83C601                  	add si, 1           	;increment
+   379 00000336 EBD5                    	jmp wave_loop3    ;loop
+   380                                  	end_wave3:
+   381 00000338 83EA02                  	sub dx, 2           	;decrease DX
+   382 0000033B 83C601                  	add si, 1          		;increment SI
+   383 0000033E C3                      	ret                 
+   384                                  
+   385                                  ground:
+   386 0000033F BF00E1                  	mov di,57600      ;position
+   387 00000342 B00A                    	mov al,10            ;color green
+   388 00000344 B9800C                  	mov cx,320*10    ;width
+   389 00000347 F3AA                    	rep stosb            ;draw
+   390 00000349 BF80ED                  	mov di,60800      ;position
+   391 0000034C B006                    	mov al,6              ;color brown
+   392 0000034E B9800C                  	mov cx,320*10     ;width
+   393 00000351 F3AA                    	rep stosb             ;draw
+   394 00000353 C3                      	ret 
+   395                                            
+   396                                  delay:
+   397 00000354 60                      	pusha
+   398 00000355 B900FA                  	mov cx,64000
+   399                                  delay1:
+   400 00000358 E2FE                    	loop delay1
+   401 0000035A 61                      	popa
+   402 0000035B C3                      	ret
+   403                                  
+   404                                  collision:
+   405 0000035C 60                      	pusha
+   406 0000035D 833E[E207]00            	cmp word[bird_pos],0
+   407 00000362 7309                    	jae next_check
+   408 00000364 C706[E807]0100          	mov word[collision_detected],1
+   409 0000036A E98C00                  	jmp get_out
+   410                                  next_check:
+   411 0000036D 813E[E207]C0E9          	cmp word[bird_pos],59840
+   412 00000373 7208                    	jb next_check1
+   413 00000375 C706[E807]0100          	mov word[collision_detected],1
+   414 0000037B EB7C                    	jmp get_out
+   415                                  next_check1:
+   416 0000037D A1[E407]                	mov ax,[beak_pos]
+   417 00000380 BA0000                  	mov dx,0
+   418 00000383 B94001                  	mov cx,320
+   419 00000386 F7F1                    	div cx
+   420 00000388 3B16[E607]              	cmp dx,[rect_pos]
+   421 0000038C 7508                    	jne next_check2
+   422 0000038E C706[E807]0100          	mov word[collision_detected],1
+   423 00000394 EB63                    	jmp get_out
+   424                                  next_check2:
+   425 00000396 3B16[EA07]              	cmp dx,[rect_pos1]
+   426 0000039A 7508                    	jne next_check3
+   427 0000039C C706[E807]0100          	mov word[collision_detected],1
+   428 000003A2 EB55                    	jmp get_out
+   429                                  next_check3:
+   430 000003A4 3B16[EC07]              	cmp dx,[rect_pos2]
+   431 000003A8 7508                    	jne next_check4
+   432 000003AA C706[E807]0100          	mov word[collision_detected],1
+   433 000003B0 EB47                    	jmp get_out
+   434                                  next_check4:
+   435 000003B2 89D6                    	mov si,dx
+   436 000003B4 A1[EE07]                	mov ax,[rect_pos_down]
+   437 000003B7 B94001                  	mov cx,320
+   438 000003BA BA0000                  	mov dx,0
+   439 000003BD F7F1                    	div cx
+   440 000003BF 39D6                    	cmp si,dx
+   441 000003C1 7508                    	jne next_check5
+   442 000003C3 C706[E807]0100          	mov word[collision_detected],1
+   443 000003C9 EB2E                    	jmp get_out
+   444                                  next_check5:
+   445 000003CB A1[F007]                	mov ax,[rect_pos_down1]
+   446 000003CE B94001                  	mov cx,320
+   447 000003D1 BA0000                  	mov dx,0
+   448 000003D4 F7F1                    	div cx
+   449 000003D6 39D6                    	cmp si,dx
+   450 000003D8 7508                    	jne next_check6
+   451 000003DA C706[E807]0100          	mov word[collision_detected],1
+   452 000003E0 EB17                    	jmp get_out
+   453                                  next_check6:
+   454 000003E2 A1[F207]                	mov ax,[rect_pos_down2]
+   455 000003E5 B94001                  	mov cx,320
+   456 000003E8 BA0000                  	mov dx,0
+   457 000003EB F7F1                    	div cx
+   458 000003ED 39D6                    	cmp si,dx
+   459 000003EF 7508                    	jne get_out
+   460 000003F1 C706[E807]0100          	mov word[collision_detected],1
+   461 000003F7 EB00                    	jmp get_out
+   462                                  get_out:	
+   463 000003F9 61                      	popa
+   464 000003FA C3                      	ret
+   465                                  
+   466                                  remover_bird:
+   467 000003FB 60                      	pusha
+   468 000003FC 89F7                    	mov di,si
+   469 000003FE 81FF004B                	cmp di, 320*60
+   470 00000402 7218                    	jb sky_color
+   471 00000404 81FF0096                	cmp di,320*120
+   472 00000408 7209                    	jb blue_color
+   473                                  
+   474                                  
+   475 0000040A B001                    	mov al,1
+   476 0000040C B91200                  	mov cx,18
+   477 0000040F F3AA                    	rep stosb
+   478 00000411 EB12                    	jmp outa
+   479                                  blue_color:
+   480 00000413 B009                    	mov al,9
+   481 00000415 B91200                  	mov cx,18
+   482 00000418 F3AA                    	rep stosb
+   483 0000041A EB09                    	jmp outa
+   484                                  
+   485                                  sky_color:
+   486 0000041C B00B                    	mov al,11
+   487 0000041E B91200                  	mov cx,18
+   488 00000421 F3AA                    	rep stosb
+   489 00000423 EB00                    	jmp outa
+   490                                  outa:
+   491 00000425 61                      	popa
+   492 00000426 C3                      	ret
+   493                                  
+   494                                  bird_falling:
+   495 00000427 60                      	pusha
+   496 00000428 8B36[E207]              	mov si,word[bird_pos]
+   497 0000042C E8CCFF                  	call remover_bird
+   498 0000042F 8106[E207]4001          	add word[bird_pos],320
+   499 00000435 8106[E407]4001          	add word[beak_pos],320
+   500 0000043B E825FD                  	call bird_body
+   501 0000043E E81BFF                  	call collision
+   502 00000441 61                      	popa
+   503 00000442 C3                      	ret
+   504                                  
+   505                                  shift_left:
+   506 00000443 60                          pusha                   ; Save registers
+   507                                  	
+   508 00000444 B800A0                      mov ax, 0xA000          ; Video memory segment
+   509                                      ; mov es, [data_segment]
+   510 00000447 8ED8                        mov ds, ax              ; Set DS to video memory
+   511                                  	; cld
+   512                                  	; mov si,0
+   513                                  	; mov di,buffer
+   514                                  	; mov cx,320*200
+   515                                  	; rep movsb
+   516                                  	; mov si,buffer+2
+   517                                  	; mov ax, 0xA000          
+   518 00000449 8EC0                    	mov es,ax
+   519                                  	; mov di,0
+   520                                  	; mov ds,[data_segment]
+   521                                  	; mov cx,320*200
+   522                                  	; rep movsb
+   523                                  
+   524 0000044B BEA0BE                      mov si, 48800            ; Start from the second column
+   525 0000044E BF9EBE                      mov di, 48798         ; Copy to the first column
+   526 00000451 B95622                      mov cx, 8790  ; Total pixels - 2 (to avoid overflow)
+   527 00000454 FC                          cld                     ; Clear direction flag (forward copy)
+   528 00000455 F3A4                        rep movsb               ; Copy bytes to shift left
+   529 00000457 BE0200                  	mov si,2
+   530 0000045A BF0000                  	mov di,0
+   531 0000045D B9FE4A                  	mov cx,320*60-2
+   532 00000460 FC                      	cld                     ; Clear direction flag (forward copy)
+   533 00000461 F3A4                        rep movsb               ; Copy bytes to shift left
+   534 00000463 BE024B                  	mov si,320*60+2
+   535 00000466 BF004B                  	mov di,320*60
+   536 00000469 B9800C                  	mov cx,320*10
+   537 0000046C FC                      	cld
+   538 0000046D F3A4                        rep movsb   
+   539 0000046F 61                          popa                    ; Restore registers
+   540 00000470 C3                          ret
+   541                                  
+   542                                  moving_up:
+   543 00000471 60                      	pusha
+   544 00000472 B800B8                  	mov ax,0xb800
+   545 00000475 8ED8                    	mov ds, ax
+   546 00000477 812E[E207]4001          	sub word[bird_pos],320
+   547 0000047D 812E[E407]4001          	sub word[beak_pos],320
+   548 00000483 E8DDFC                  	call bird_body
+   549 00000486 E8D3FE                  	call collision
+   550 00000489 8B36[F707]              	mov si,[bird_position_holder]
+   551 0000048D E86BFF                  	call remover_bird
+   552 00000490 61                      	popa
+   553 00000491 C3                      	ret
+   554                                  HandleKeyPress:
+   555 00000492 60                          pusha                       ; Save all general-purpose registers
+   556 00000493 1E                          push ds                     ; Save data segment
+   557 00000494 06                          push es                     ; Save extra segment
+   558 00000495 B800A0                      mov ax, 0xA000              ; Set DS to text mode segment (to avoid video memory interference)
+   559 00000498 8EC0                    	mov es,ax
+   560 0000049A B800B8                  	mov ax,0xb800
+   561 0000049D 8ED8                       mov ds, ax
+   562 0000049F B401                        mov ah, 01h               ; Check if a key is pressed (non-blocking)
+   563 000004A1 CD16                        int 16h
+   564 000004A3 741F                        jz no_key                   ; If no key is pressed, jump to no_key
+   565 000004A5 B400                        mov ah, 0                   ; BIOS function to read key press (blocking)
+   566 000004A7 CD16                        int 16h
+   567 000004A9 3C01                        cmp al, 01h                 ; Check if ESC key is pressed
+   568 000004AB 0F8466FC                    je ShowExitConfirmation
+   569 000004AF 80FC48                      cmp ah, 48h                 ; Check if UP ARROW key is pressed (scan code)
+   570 000004B2 7407                        je up_up
+   571 000004B4 C606[F607]44                mov byte [BirdDirection], 'D' ; Default to downward movement
+   572 000004B9 EB05                        jmp end_keypress
+   573                                  up_up:
+   574 000004BB C606[F607]55                mov byte [BirdDirection], 'U' ; Set direction to Up
+   575                                  end_keypress:
+   576 000004C0 07                          pop es                      ; Restore extra segment
+   577 000004C1 1F                          pop ds                      ; Restore data segment
+   578 000004C2 61                          popa                        ; Restore general-purpose registers
+   579 000004C3 C3                          ret
+   580                                  no_key:
+   581 000004C4 C606[F607]44                mov byte [BirdDirection], 'D' ; Default to downward movement when no key is pressed
+   582 000004C9 07                          pop es                       ; Restore extra segment
+   583 000004CA 1F                          pop ds                       ; Restore data segment
+   584 000004CB 61                          popa                         ; Restore general-purpose registers
+   585 000004CC C3                          ret
+   586                                  PrintStartScreen:
+   587 000004CD E873FC                  	call upper_part		
+   588 000004D0 E87AFC                  	call medium_part
+   589 000004D3 E882FC                  	call lower_part
+   590 000004D6 E88AFC                  	call bird_body
+   591 000004D9 E8BBFC                  	call bird_beak
+   592 000004DC E8D8FC                  	call green_rect_down
+   593 000004DF E8F4FC                  	call green_rect_up
+   594 000004E2 E80DFD                  	call wave_loop
+   595 000004E5 E835FD                  	call wave_loop_inverted
+   596 000004E8 E85FFD                  	call wave_loop1
+   597 000004EB E88AFD                  	call wave_loop_inverted1
+   598 000004EE E8B4FD                  	call wave_loop2
+   599 000004F1 E8E6FD                  	call wave_loop_inverted2
+   600 000004F4 E816FE                  	call wave_loop3
+   601 000004F7 E845FE                  	call ground
+   602 000004FA C3                      	ret
+   603                                  
+   604                                  PlayAnimation:
+   605 000004FB E856FE                      call delay
+   606                                      ; call delay
+   607                                      ; call delay
+   608                                      ; call delay
+   609                                      ; call delay
+   610                                      ; call delay
+   611                                      ; call delay
+   612                                      ; call delay
+   613                                      ; call delay
+   614                                      ; call delay
+   615                                      ; call delay
+   616                                     ; call delay
+   617                                      ; call delay
+   618                                      ; call delay
+   619                                      ; call delay
+   620                                      ; call delay
+   621                                      ; call delay
+   622 000004FE E842FF                      call shift_left
+   623                                  
+   624 00000501 A0[F607]                    mov al, [BirdDirection]
+   625 00000504 3C55                        cmp al, 'U'
+   626 00000506 7404                        je move_up
+   627 00000508 3C44                        cmp al, 'D'
+   628 0000050A 7405                        je move_down
+   629                                  move_up:
+   630 0000050C E862FF                      call moving_up
+   631 0000050F EB05                        jmp end_move
+   632                                  move_down:
+   633 00000511 E813FF                      call bird_falling
+   634 00000514 EB00                        jmp end_move
+   635                                  end_move:
+   636 00000516 C3                          ret
+   637                                  ; anime:
+   638                                  ; main_loop:
+   639                                       ; call HandleKeyPress
+   640                                      ; call PlayAnimation
+   641                                      ; jmp main_loop
+   642                                  	; ret
+   643                                  kbisr:
+   644 00000517 60                          pusha                       ; Save all general-purpose registers
+   645 00000518 1E                          push ds                     ; Save DS
+   646 00000519 06                          push es                     ; Save ES
+   647 0000051A B800A0                      mov ax, 0xA000              ; Point ES to video memory segment
+   648 0000051D 8EC0                        mov es, ax
+   649 0000051F E460                        in al, 0x60                 ; Read the scan code from keyboard port (0x60)
+   650 00000521 3C01                        cmp al, 0x01                ; Check if ESC key was pressed (scan code 0x01)
+   651 00000523 0F840DFC                    je exit_game                ; If ESC, jump to exit game routine
+   652 00000527 E8A3FF                      call PrintStartScreen       ; Display the static screen
+   653 0000052A C606[F407]01                mov byte [isAnimating], 1   ;Set animation flag to start the game
+   654                                  	; call anime
+   655 0000052F B020                        mov al, 0x20                ; End of interrupt (EOI) command
+   656 00000531 E620                        out 0x20, al                ; Send EOI to the PIC
+   657 00000533 07                          pop es                      ; Restore ES
+   658 00000534 1F                          pop ds                      ; Restore DS
+   659 00000535 61                          popa                        ; Restore general-purpose registers
+   660 00000536 CF                          iret                        ; Return from interrupt
+   661                                  start:
+   662 00000537 8C1E[1000]              	mov word[data_segment],ds
+   663 0000053B E88FFF                  call PrintStartScreen
+   664                                  	main_loop:
+   665                                       ; call HandleKeyPress
+   666 0000053E E8BAFF                      call PlayAnimation
+   667 00000541 EBFB                        jmp main_loop
+   668                                  	
+   669                                  	; call DisplayIntroduction	
+   670                                  	; pusha
+   671                                  	; xor ax, ax
+   672                                  	; mov es, ax					; es=0, point es to IVT base
+   673                                  	; cli					
+   674                                  	; mov word [es:9*4], kbisr		; store offset at n*4....... csabc:kbisr	
+   675                                  	; mov [es:9*4+2], cs			;store segment at n*4+2
+   676                                  	; sti	
+   677                                  	; popa
+   678                                  
+   679                                  	; ; mov ah,0x99
+   680                                  	; ; mov al,0x2A
+   681                                  	; ; mov word [es:4], ax
+   682                                  	; mov ax, cs
+   683                                  	; mov ds, ax
+   684                                  	; call PrintStartScreen
+   685                                  ; WaitForStart:
+   686                                      ; cmp byte [isAnimating], 1
+   687                                      ; jne WaitForStart               ;Loop until isAnimating is set 
+   688                                  	; jmp main_loop
+   689                                  
+   690                                  	; call PrintStartScreen
+   691                                  
+   692                                  
+   693                                  labela:
+   694                                  	; call iteration
+   695                                  ; jmp labela
+   696 00000543 31C0                    	xor ax, ax
+   697 00000545 CD16                    	int 0x16	
+   698 00000547 B80300                  	mov ax, 0x0003
+   699 0000054A CD10                    	int 0x10
+   700 0000054C B8004C                  	mov ax, 0x4C00
+   701 0000054F CD21                    int 0x21

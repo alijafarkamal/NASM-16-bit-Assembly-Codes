@@ -1,0 +1,46 @@
+     1                                  [org 0x0100]
+     2 00000000 EB0E                    	jmp start
+     3 00000002 010102020202040404-     arr: db 1,1,2,2,2,2,4,4,4,4,4
+     3 0000000B 0404               
+     4 0000000D 0B00                    count: dw 11
+     5 0000000F 00                      mode: db 0
+     6                                  start:
+     7 00000010 B90000                  	mov cx,0			;counter
+     8 00000013 BF0100                  	mov di,1			;one index ahead
+     9 00000016 8A9D[0200]              	mov bl,[arr+di]			;1st element
+    10 0000001A B201                    	mov dl,1			;one step ahead
+    11 0000001C B90000                  	mov cx,0
+    12 0000001F BD0000                  	mov bp,0			;frequency holder
+    13                                  loop:
+    14 00000022 390E[0D00]              	cmp [count],cx		;checks condition
+    15 00000026 7429                    	jz out					;if not equal jump out of loop
+    16 00000028 8A9D[0200]              	mov bl,[arr+di]		;element holder
+    17 0000002C 3A9D[0100]              	cmp bl,[arr+di-1]		;element comparison
+    18 00000030 750B                    	jnz check
+    19                                  pre_check:
+    20 00000032 83C101                  	add cx,1			;increment
+    21 00000035 83C701                  	add di,1			;increment
+    22 00000038 83C201                  	add dx,1			;increment
+    23 0000003B EBE5                    	jmp loop	
+    24                                  check:
+    25 0000003D 39EA                    	cmp dx,bp		;checks if previous frequency is greater than current
+    26 0000003F 7705                    	ja move			;if not jump to move
+    27 00000041 BA0000                  	mov dx,0			;otherwise again set to 0
+    28 00000044 EBEC                    	jmp pre_check	;jump back
+    29                                  move:
+    30 00000046 8A85[0100]              	mov al,[arr+di-1]	;mode holder
+    31 0000004A 89D5                    	mov bp,dx		;frequency holder
+    32 0000004C BA0000                  	mov dx,0			;again initialized to 0
+    33 0000004F EBE1                    	jmp pre_check	;return back to iteration
+    34                                  out:
+    35 00000051 A2[0F00]                	mov [mode],al
+    36 00000054 B8004C                  	mov ax,0x4c00
+    37 00000057 CD21                    	int 0x21
+
+
+;Zero Dark Thirty (2012) - This film, directed by Kathryn Bigelow, chronicles the decade-long hunt for Osama bin Laden after the September 2001 attacks, and his death at the hands of the Navy SEALs Team 6 in May 2011. The ISI's role in the region is alluded to throughout the movie.
+
+;A Mighty Heart (2007) - Based on the true story of the abduction and murder of Wall Street Journal reporter Daniel Pearl, this film touches on the complicated relationship between the ISI and various terrorist organizations. Although the film is more about Mariane Pearl's search for her husband, it portrays various aspects of Pakistani intelligence.
+
+;Charlie Wilson's War (2007) - This film tells the story of U.S. Congressman Charlie Wilson and CIA operative Gust Avrakotos, whose efforts led to Operation Cyclone, a program to organize and support the Afghan mujahideen during the Afghan War. While it primarily focuses on the CIA's role, it also touches on Pakistan's involvement through the ISI.
+

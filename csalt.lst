@@ -1,0 +1,155 @@
+     1                                  [org 0x100]
+     2 00000000 E9BC00                  jmp start
+     3 00000003 06                      clrscr:		push es
+     4 00000004 50                      			push ax
+     5 00000005 57                      			push di
+     6                                  
+     7 00000006 B800B8                  			mov ax, 0xb800
+     8 00000009 8EC0                    			mov es, ax					; point es to video base
+     9 0000000B BF0000                  			mov di, 0					; point di to top left column
+    10                                  
+    11 0000000E 26C7052007              nextloc:	mov word [es:di], 0x0720	; clear next char on screen
+    12 00000013 83C702                  			add di, 2					; move to next screen location
+    13 00000016 81FFA00F                			cmp di, 4000				; has the whole screen cleared
+    14 0000001A 75F2                    			jne nextloc					; if no clear next position
+    15                                  
+    16 0000001C 5F                      			pop di
+    17 0000001D 58                      			pop ax
+    18 0000001E 07                      			pop es
+    19 0000001F C3                      			ret
+    20                                  	check:
+    21 00000020 B05C                    			mov al,'\'  
+    22                                  			;left
+    23 00000022 268905                  			mov word[es:di],ax
+    24 00000025 81C7A200                			add di,162
+    25 00000029 39D7                    			cmp di, dx
+    26 0000002B 7C46                    			jl loop2
+    27 0000002D EB4E                    			jmp loop3
+    28                                  			
+    29                                  	check1:
+    30 0000002F B02F                    			 mov al,'/'          ; right
+    31 00000031 268905                  			 mov word[es:di],ax
+    32 00000034 81C79E00                			 add di,158
+    33 00000038 39D7                    			 cmp di, dx
+    34 0000003A 7C41                    	  	     jl loop3	
+    35 0000003C EB43                    jmp end			 
+    36                                  
+    37                                  print :
+    38 0000003E 06                                 push es
+    39 0000003F 50                      			push ax
+    40 00000040 57                      			push di
+    41 00000041 55                      			push bp
+    42 00000042 89E5                    			mov bp,sp
+    43                                  			
+    44 00000044 B800B8                  			mov ax, 0xb800
+    45 00000047 8EC0                    			mov es, ax
+    46 00000049 B02B                    			mov al,'+'
+    47 0000004B B404                    			mov ah,0x04
+    48 0000004D 89D7                    			mov di,dx	
+    49 0000004F 268905                  			mov[es:di],ax
+    50 00000052 89DF                    	        mov di,bx
+    51 00000054 268905                  			mov [es:di],ax
+    52 00000057 89CF                    		    mov di,cx
+    53 00000059 268905                  			mov [es:di],ax
+    54                                  			
+    55 0000005C 89DF                    			mov di,bx
+    56 0000005E 83C702                  			add di,2
+    57                                  			loop1: 
+    58 00000061 B02D                    			mov al,'-'          ; base
+    59 00000063 268905                  			mov word[es:di],ax
+    60 00000066 83C702                  			add di,2
+    61 00000069 39CF                    			cmp di, cx
+    62 0000006B 7CF4                    			jl loop1
+    63                                  			 
+    64 0000006D 89DF                    			mov di,bx
+    65 0000006F 81C7A200                			add di,162
+    66                                  		
+    67                                  			loop2:
+    68 00000073 39D7                    			cmp di ,dx
+    69 00000075 7CA9                    			jl check
+    70                                  			
+    71                                  		
+    72                                  			
+    73 00000077 89CF                    			 mov di,cx
+    74 00000079 81C79E00                			 add di,158
+    75                                  			
+    76                                  			loop3:
+    77 0000007D 39D7                    			cmp di, dx
+    78 0000007F 7CAE                    			jl check1
+    79                                  			
+    80                                  			
+    81                                  	end:		
+    82 00000081 5D                      			pop bp
+    83 00000082 5F                      			pop di 
+    84 00000083 58                      			pop ax 
+    85 00000084 07                      			pop es
+    86 00000085 C3                      			ret
+    87                                  
+    88                                  calculate:
+    89                                  
+    90 00000086 B85000                  	mov ax,80
+    91 00000089 50                      	push ax
+    92 0000008A 55                      	push bp 
+    93 0000008B 89E5                    	mov bp,sp
+    94 0000008D 8B4610                  	mov ax,[bp+16]
+    95 00000090 F76602                  	mul word[bp+2]
+    96 00000093 03460E                  	add ax,[bp+14]
+    97 00000096 D1E0                    	shl ax,1
+    98 00000098 89C7                    	mov di,ax
+    99 0000009A 57                      	push di
+   100 0000009B 8B460C                  	mov ax,[bp+12]
+   101 0000009E F76602                  	mul word[bp+2]
+   102 000000A1 03460A                  	add ax,[bp+10]
+   103 000000A4 D1E0                    	shl ax,1
+   104 000000A6 89C7                    	mov di,ax
+   105 000000A8 57                      	push di
+   106 000000A9 8B4608                  	mov ax,[bp+8]
+   107 000000AC F76602                  	mul word[bp+2]
+   108 000000AF 034606                  	add ax,[bp+6]
+   109 000000B2 D1E0                    	shl ax,1
+   110 000000B4 89C7                    	mov di,ax
+   111 000000B6 57                      	push di
+   112 000000B7 59                      	pop cx
+   113 000000B8 5B                      	pop bx
+   114 000000B9 5A                      	pop dx
+   115 000000BA 5D                      	pop bp 
+   116 000000BB 5E                      	pop si
+   117 000000BC C20C00                  	ret 12
+   118                                  	
+   119                                  	
+   120                                     
+   121                                  start:
+   122                                  
+   123 000000BF B80200                  	mov ax,2         ;row of top  
+   124 000000C2 50                      	push ax
+   125 000000C3 B80500                  	mov ax,5          ;c of top
+   126 000000C6 50                      	push ax	
+   127 000000C7 B80100                  	mov ax,1          ;row of left corner
+   128 000000CA 50                      	push ax
+   129 000000CB B80400                  	mov ax,4         ;c of left corner
+   130 000000CE 50                      	push ax
+   131 000000CF B80100                  	mov ax,1        ;row of right corner 
+   132 000000D2 50                      	push ax
+   133 000000D3 B80600                  	mov ax,6          ;c of right corner
+   134 000000D6 50                      	push ax
+   135                                  	
+   136 000000D7 E8ACFF                  	call calculate
+   137 000000DA E826FF                  	call clrscr
+   138 000000DD E85EFF                  	call print
+   139                                  	
+   140 000000E0 B80600                  	mov ax,6         ;row of top  
+   141 000000E3 50                      	push ax
+   142 000000E4 B80A00                  	mov ax,10         ;c of top
+   143 000000E7 50                      	push ax	
+   144 000000E8 B80400                  	mov ax,4         ;row of left corner
+   145 000000EB 50                      	push ax
+   146 000000EC B80900                  	mov ax,9        ;c of left corner
+   147 000000EF 50                      	push ax
+   148 000000F0 B80400                  	mov ax,4        ;row of right corner 
+   149 000000F3 50                      	push ax
+   150 000000F4 B80B00                  	mov ax,11          ;c of right corner
+   151 000000F7 50                      	push ax
+   152 000000F8 E88BFF                  	call calculate
+   153 000000FB E840FF                  	call print
+   154 000000FE B8004C                  mov ax,0x04c00 ; terminate
+   155 00000101 CD21                    int 0x21

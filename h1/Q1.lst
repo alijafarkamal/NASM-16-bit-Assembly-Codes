@@ -1,0 +1,17 @@
+     1                                  
+     2                                  
+     3                                  [org 0x0100]
+     4                                  
+     5 00000000 8B36[1600]              mov si, [N]				; save base value in bx
+     6 00000004 B80000                  mov ax, 0				; initialize sum to 0
+     7                                  
+     8 00000007 01F0                    l1: 	add ax, si		; add value of bx to ax
+     9 00000009 83EE01                  		sub si, 1			;decrement value by 1 which is also behaving as counter
+    10 0000000C 75F9                    		jnz l1				;JUMP to l1 if ZERO FLAG is not Set
+    11 0000000E A3[1800]                mov [total], ax			; save sum in total
+    12                                  
+    13 00000011 B8004C                  mov ax, 0x4c00		;terminate the program
+    14 00000014 CD21                    int 0x21
+    15                                  
+    16 00000016 0600                    N:		dw 6
+    17 00000018 0000                    total:	dw 0

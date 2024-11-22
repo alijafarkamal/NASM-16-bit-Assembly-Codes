@@ -1,0 +1,56 @@
+     1                                  [org 0x0100]
+     2 00000000 EB4B                    jmp start
+     3                                  
+     4                                  video_segment equ 0xB800
+     5                                  screen_width   equ 80
+     6                                  screen_height  equ 25
+     7                                  bytes_per_char equ 2
+     8                                  
+     9                                  scrollup:
+    10 00000002 60                          pusha
+    11 00000003 B800B8                      mov ax, video_segment
+    12 00000006 8EC0                        mov es, ax
+    13 00000008 8ED8                        mov ds, ax
+    14 0000000A B9E001                      mov cx, screen_width * 3 * bytes_per_char
+    15 0000000D 31F6                        xor si, si
+    16 0000000F 01CE                        add si, cx
+    17 00000011 31FF                        xor di, di
+    18 00000013 B9E006                      mov cx, (screen_height - 3) * screen_width
+    19 00000016 D1E1                        shl cx, 1
+    20 00000018 FC                          cld
+    21 00000019 F3A5                        rep movsw
+    22 0000001B B82007                      mov ax, 0x0720
+    23 0000001E B9F000                      mov cx, screen_width * 3
+    24 00000021 D1E1                        shl cx, 1
+    25 00000023 BFC00D                      mov di, (screen_height - 3) * screen_width * bytes_per_char
+    26 00000026 F3AB                        rep stosw
+    27 00000028 61                          popa
+    28 00000029 C3                          ret
+    29                                  
+    30                                  scrolldown:
+    31 0000002A 60                          pusha
+    32 0000002B B800B8                      mov ax, video_segment
+    33 0000002E 8EC0                        mov es, ax
+    34 00000030 8ED8                        mov ds, ax
+    35 00000032 B9E001                      mov cx, screen_width * 3 * bytes_per_char
+    36 00000035 BEE00B                      mov si, (screen_height - 6) * screen_width * bytes_per_char
+    37 00000038 BFC00D                      mov di, (screen_height - 3) * screen_width * bytes_per_char
+    38 0000003B FD                          std
+    39 0000003C F3A5                        rep movsw
+    40 0000003E FC                          cld
+    41 0000003F B82007                      mov ax, 0x0720
+    42 00000042 B9F000                      mov cx, screen_width * 3
+    43 00000045 D1E1                        shl cx, 1
+    44 00000047 31FF                        xor di, di
+    45 00000049 F3AB                        rep stosw
+    46 0000004B 61                          popa
+    47 0000004C C3                          ret
+    48                                  
+    49                                  start:
+    50                                  main_loop:
+    51 0000004D E8B2FF                      call scrollup
+    52 00000050 E8D7FF                      call scrolldown
+    53 00000053 EBF8                        jmp main_loop
+    54                                  
+    55 00000055 B8004C                  mov ax, 0x4C00
+    56 00000058 CD21                    int 0x21

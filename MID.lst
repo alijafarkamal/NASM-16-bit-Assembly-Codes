@@ -1,0 +1,57 @@
+     1                                  [org 0x100]
+     2                                  ;**NOTE**: Carefully observe the top value of stack throughout debugging and when returning from the function  
+     3 00000000 EB3E                    jmp main ;jump to main
+     4                                  
+     5                                  
+     6                                  fun2:;nested function
+     7                                  
+     8 00000002 55                      	push bp      ; Save base pointer
+     9 00000003 89E5                    	mov bp, sp   ; Set base pointer to stack pointer
+    10 00000005 83EC02                  	sub sp, 2  ;create another local variable for nested fun2
+    11                                  	
+    12 00000008 C746FE0400              	mov word [bp-2], 4 ;placing 4 in local variable as we have to add 4 to parameter
+    13                                  	
+    14                                  	
+    15 0000000D 8B4604                  	mov ax,[bp+4] ; it contains the number which is passed
+    16 00000010 0146FE                  	add  [bp-2],ax ; add that number to 4(stored in result i.e.[bp-2])
+    17 00000013 8B46FE                  	mov ax,[bp-2] ;mov result to ax
+    18                                  	 
+    19 00000016 894604                  	mov [bp+4],ax ;now we can move result to [bp+4] which is the local variable of fun1
+    20                                  	
+    21 00000019 89EC                    	mov sp, bp
+    22 0000001B 5D                          pop bp
+    23 0000001C C3                          ret  ;we didnt pass the parameter but when we return from fun2 the local variable of fun1 has to popped so that we get the correct returning address for fun1 
+    24                                  
+    25                                  fun1:
+    26 0000001D 55                          push bp      ; Save base pointer
+    27 0000001E 89E5                        mov bp, sp   ; Set base pointer to stack pointer
+    28 00000020 83EC02                      sub sp, 2    ; Allocate 2 bytes for local variable (result) (if you guys want to create lets say 5 variables you can subtract (5*2=10 bytes) from sp for reseving space for variables )
+    29                                  
+    30 00000023 C746FE0500                  mov word [bp-2], 5 ; Initialize result to 5 (as we want to add 5 to given number)
+    31                                  
+    32 00000028 8B4604                      mov ax,[bp+4] ; it contains the number which is passed
+    33 0000002B 0146FE                  	add  [bp-2],ax ; add that number to 5(stored in result i.e.[bp-2])
+    34 0000002E 8B46FE                  	mov ax,[bp-2] ;mov result to ax
+    35                                  	
+    36                                      ;local variable will be used as parameter for fun2 so we dont need to push ax for fun2
+    37 00000031 E8CEFF                  	call fun2 ;call second function which will adds 4 to the result of fun1
+    38                                  	
+    39                                  	
+    40 00000034 8B46FE                      mov ax,[bp-2] ;
+    41                                  	
+    42 00000037 894606                      mov [bp+6],ax
+    43 0000003A 89EC                        mov sp, bp
+    44 0000003C 5D                          pop bp
+    45 0000003D C20200                      ret 2 ; as we had one parameter of 2 bytes
+    46                                  
+    47                                  ; Main program
+    48                                  main:
+    49 00000040 6A01                        push 1     ; Push the number in which you want to add 5
+    50 00000042 E8D8FF                      call fun1
+    51 00000045 5B                          pop bx       ; Pop the result into BX
+    52                                  
+    53                                      [org 0x100]
+    54                                  
+    55                                  
+    56 00000046 B44C                        mov ah, 4ch  ; Exit program
+    57 00000048 CD21                        int 21h

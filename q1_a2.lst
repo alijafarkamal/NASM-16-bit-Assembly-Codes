@@ -1,0 +1,54 @@
+     1                                  ; scroll down the screen
+     2                                  [org 0x0100]
+     3 00000000 EB3D                    jmp start
+     4                                  ter
+     4          ******************       warning: label alone on a line without a colon might be in error [-w+label-orphan]
+     5 00000002 55                      scrolldown:	push bp
+     6 00000003 89E5                    			mov bp,sp
+     7 00000005 50                      			push ax
+     8 00000006 51                      			push cx
+     9 00000007 56                      			push si
+    10 00000008 57                      			push di
+    11 00000009 06                      			push es
+    12 0000000A 1E                      			push ds
+    13                                  
+    14 0000000B B85000                  			mov ax, 80 ; load chars per row in ax
+    15 0000000E F66604                  			mul byte [bp+4] ; calculate source position
+    16 00000011 50                      			push ax ; save position for later use
+    17 00000012 D1E0                    			shl ax, 1 ; convert to byte offset
+    18                                  			;ax has now address of 
+    19                                  
+    20 00000014 BE9E0F                  			mov si, 3998 ; last location on the screen
+    21 00000017 29C6                    			sub si, ax ; load source position in si
+    22                                  			;si has less 
+    23 00000019 B9A00F                  			mov cx, 4000 ; number of screen locations
+    24 0000001C 29F1                    			sub cx, si ; count of words to move
+    25 0000001E D1E8                    			shr ax,1
+    26                                  
+    27 00000020 B800B8                  			mov ax, 0xb800
+    28 00000023 8EC0                    			mov es, ax ; point es to video base
+    29 00000025 8ED8                    			mov ds, ax ; point ds to video base
+    30 00000027 BF9E0F                  			mov di, 3998 ; point di to lower right column
+    31                                  
+    32 0000002A FD                      			std ; set auto decrement mode
+    33 0000002B F3A5                    			rep movsw ; scroll up
+    34                                  			
+    35 0000002D B82007                  			mov ax, 0x0720 ; space in normal attribute
+    36 00000030 59                      			pop cx ; count of positions to clear
+    37 00000031 89CF                    			mov di,cx						
+    38 00000033 F3AB                    			rep stosw ; clear the scrolled space
+    39                                  
+    40 00000035 1F                      			pop ds
+    41 00000036 07                      			pop es
+    42 00000037 5F                      			pop di
+    43 00000038 5E                      			pop si
+    44 00000039 59                      			pop cx
+    45 0000003A 58                      			pop ax
+    46 0000003B 5D                      			pop bp
+    47 0000003C C20200                  			ret 2
+    48 0000003F B80C00                  start:  mov ax,12
+    49 00000042 50                      		push ax 
+    50 00000043 E8BCFF                  		call scrolldown
+    51                                  
+    52 00000046 B8004C                  		mov ax, 0x4c00 ; terminate program
+    53 00000049 CD21                    		int 0x21

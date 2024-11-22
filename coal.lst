@@ -1,0 +1,71 @@
+     1                                  [org 0x0100]
+     2 00000000 EB40                    jmp start
+     3                                  
+     4 00000002 628A31441321FAEF25-     arr: dw 11111010, 10110001, 10101011, 01110010, 11000101, 10011100, 01010100, 01010000, 10001011
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4 0000000B D9DCC1B4695069739A 
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     4          ******************       warning: word data exceeds bounds [-w+number-overflow]
+     5 00000014 0A00                    size: dw 10
+     6                                  
+     7                                  																									;start1:
+     8                                  																									;	mov cx, 0           ; Initialize counter
+     9                                  																									;	mov si, 0           ; Initialize index for array
+    10                                  																									;
+    11                                  																									;loop_start:
+    12                                  																									;	cmp cx, word [size]  ; Compare counter with size
+    13                                  																									;	jge finish           ; Jump to finish if end of array is reached
+    14                                  																									;
+    15                                  																									;	mov ax, [arr + si]   ; Load word from array
+    16                                  																									;	mov ah, al           ; Copy low byte to high (for manipulation)
+    17                                  																									;	shr ah, 2            ; Shift right twice, now bits 2-7 are in positions 0-5
+    18                                  																									;	and ah, 0x1C         ; Mask out all but bits 3, 4, 5 (0x1C = 11100b)
+    19                                  																									;
+    20                                  																									;	mov bl, al
+    21                                  																									;	shr bl, 5            ; Shift right five times, bits 5-7 move to 0-2
+    22                                  																									;	and bl, 0x07         ; Mask out all but bits 0, 1, 2 (00000111b)
+    23                                  																									;
+    24                                  																									;	xor al, 0x03         ; Toggle the least significant two bits
+    25                                  																									;	and al, 0x03         ; Mask out all but these two toggled bits
+    26                                  																									;	shl al, 6            ; Shift them to positions 6 and 7
+    27                                  																									;
+    28                                  																									;	or al, bl            ; Combine the 0-2 bits
+    29                                  																									;	or al, ah            ; Combine the 3-5 bits
+    30                                  																									;
+    31                                  																									;	mov [arr + si], ax   ; Store the transformed word back to array
+    32                                  																									;
+    33                                  																									;	add si, 2            ; Increment index by 2 (word size)
+    34                                  																									;	inc cx               ; Increment counter
+    35                                  																									;	jmp loop_start
+    36                                  																									;
+    37                                  																									;finish:
+    38                                  																									;	ret
+    39                                  
+    40                                  
+    41                                  print: 
+    42 00000016 8B0E[1400]              	mov cx,[size]
+    43 0000001A BE0000                  	mov si,0
+    44                                  loopa:
+    45 0000001D 8B84[0200]              	mov ax,[arr+si]
+    46 00000021 89C3                    	mov bx,ax
+    47 00000023 D1E0                    	shl ax,1
+    48 00000025 81E3C700                	and bx,0xC7
+    49 00000029 09D8                    	or ax,bx
+    50 0000002B C1D003                  	rcl ax,3
+    51 0000002E 8B9C[0200]              	mov bx,[arr+si]
+    52 00000032 81E3C000                	and bx,0xC0
+    53 00000036 31D8                    	xor ax,bx
+    54 00000038 8984[0200]              	mov [arr+si],ax
+    55 0000003C 83C602                  	add si,2
+    56 0000003F E2DC                    loop loopa
+    57 00000041 C3                      	ret
+    58                                  start:
+    59 00000042 E8D1FF                  	call print
+    60 00000045 B8004C                  	mov ax, 0x4c00
+    61 00000048 CD21                    	int 0x21
