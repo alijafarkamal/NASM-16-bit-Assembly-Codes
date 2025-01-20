@@ -1,0 +1,711 @@
+     1                                  
+     2                                  %imacro note 2
+     3                                  %ifidni %1,C
+     4                                   db (%2)*12 + 0
+     5                                  %elifidni %1,C#
+     6                                   db (%2)*12 + 1
+     7                                  %elifidni %1,D
+     8                                   db (%2)*12 + 2
+     9                                  %elifidni %1,D#
+    10                                   db (%2)*12 + 3
+    11                                  %elifidni %1,E
+    12                                   db (%2)*12 + 4
+    13                                  %elifidni %1,F
+    14                                   db (%2)*12 + 5
+    15                                  %elifidni %1,F#
+    16                                   db (%2)*12 + 6
+    17                                  %elifidni %1,G
+    18                                   db (%2)*12 + 7
+    19                                  %elifidni %1,G#
+    20                                   db (%2)*12 + 8
+    21                                  %elifidni %1,A
+    22                                   db (%2)*12 + 9
+    23                                  %elifidni %1,A#
+    24                                   db (%2)*12 + 10
+    25                                  %elifidni %1,H
+    26                                   db (%2)*12 + 11
+    27                                  %else
+    28                                   %error Invalid use of note macro.
+    29                                  %endif
+    30                                  %endmacro
+    31                                  
+    32 00000000 EB22                    jmp main
+    33                                  delay3:
+    34 00000002 51                      	push cx
+    35 00000003 B9FFFF                      mov cx, 0FFFFh  ; Set a large value for delay
+    36                                  .delay_loop:
+    37 00000006 E2FE                        loop .delay_loop
+    38 00000008 59                      	pop cx
+    39 00000009 C3                          ret
+    40                                  ; code
+    41                                  ;
+    42                                  [org 0x100]
+    43                                  ; ch=0, ah=0 on entry
+    44                                  start1:
+    45 0000000A 60                      pusha
+    46 0000000B 1E                          push ds
+    47 0000000C 06                          push es
+    48 0000000D 16                          push ss
+    49 0000000E 31C0                        xor ax, ax                  ; AX = 0
+    50 00000010 31DB                        xor bx, bx                  ; BX = 0
+    51 00000012 31C9                        xor cx, cx                  ; CX = 0
+    52 00000014 31D2                        xor dx, dx                  ; DX = 0
+    53 00000016 31F6                        xor si, si                  ; SI = 0
+    54 00000018 31FF                        xor di, di                  ; DI = 0
+    55 0000001A 31ED                        xor bp, bp                  ; BP = 0
+    56 0000001C E80500                  call main
+    57 0000001F 17                          pop ss
+    58 00000020 07                          pop es
+    59 00000021 1F                          pop ds
+    60 00000022 61                          popa                        ; Restore all general-purpose registers
+    61 00000023 C3                          ret
+    62                                  
+    63                                  main:
+    64                                  
+    65                                    ; bp will point to the adlibreg routine (during the whole demo)
+    66 00000024 BD[C900]                  mov bp,adlibreg
+    67 00000027 E88700                    call initialize
+    68                                  
+    69 0000002A BF00A0                    mov di,0xA000                         ; 0xA000 = 320 * 128
+    70 0000002D 8EC7                      mov ES,di
+    71                                  
+    72                                    core:
+    73                                  
+    74                                      ; bl = frame counter
+    75                                      ; bh = 0 (at least it seems so, but who cares, it's working well :)
+    76 0000002F FEC3                        inc bl
+    77 00000031 53                          push bx
+    78                                  
+    79                                  ; ---------------------------------------------------------------------------
+    80                                  ; adlib player routine
+    81                                  ; ---------------------------------------------------------------------------
+    82                                  
+    83                                  player:
+    84 00000032 89D8                        mov ax,bx
+    85 00000034 24EF                        and al,0xEF
+    86 00000036 C1EB05                      shr bx,5
+    87 00000039 8A8F[F800]                  mov cl,[bx+pattern]
+    88 0000003D 240F                        and al,0x0F
+    89 0000003F 89C3                        mov bx,ax
+    90 00000041 028F[F800]                  add cl,[bx+pattern]
+    91                                  
+    92 00000045 2403                        and al,0x03
+    93 00000047 3C03                        cmp al,0x03
+    94 00000049 7501                        jne .skip
+    95 0000004B 48                          dec ax
+    96                                     .skip:
+    97                                  
+    98 0000004C 04A0                        add al,0xA0
+    99                                  
+   100 0000004E 50                          push ax
+   101 0000004F 31C0                        xor ax,ax
+   102 00000051 88C8                        mov al,cl
+   103 00000053 B60C                        mov dh,12
+   104 00000055 F6F6                        div dh
+   105 00000057 88E3                        mov bl,ah
+   106 00000059 C1E002                      shl ax,2
+   107 0000005C 88C6                        mov dh,al
+   108 0000005E 58                          pop ax
+   109                                  
+   110                                     ; play one note
+   111                                     ; al = channel (0..3) + 0xA0
+   112                                     ; bx = note (0..11)
+   113                                     ; dh = 4 * octave (0..7)
+   114                                  
+   115                                      ; set frequency
+   116 0000005F 8AA7[DE00]                  mov ah,[bx+freqtable]
+   117 00000063 FFD5                        call bp
+   118                                  
+   119                                      ; note off
+   120 00000065 0410                        add al,0x10
+   121 00000067 88F4                        mov ah,dh
+   122 00000069 FFD5                        call bp
+   123                                  
+   124                                      ; note on
+   125 0000006B 80C420                      add ah,0x20
+   126 0000006E FFD5                        call bp
+   127                                  
+   128                                  ; ---------------------------------------------------------------------------
+   129                                  ; end of adlib player routine
+   130                                  ; ---------------------------------------------------------------------------
+   131                                  
+   132 00000070 E88FFF                      call delay3
+   133 00000073 E88CFF                  	call delay3
+   134                                  
+   135                                  ; ---------------------------------------------------------------------------
+   136                                  ; particle effect - 'snow'
+   137                                  ; ---------------------------------------------------------------------------
+   138                                  
+   139                                  particles:
+   140 00000076 FD                          std
+   141 00000077 BF7FD4                      mov di,320*170 - 1
+   142 0000007A 89F9                        mov cx,di
+   143                                      .loop:
+   144 0000007C BB4001                        mov bx,321 - 1                    ; Substract 1 to compensate
+   145 0000007F E440                          in al,0x40                        ; the bad pseudo random routine.
+   146 00000081 2403                          and al,0x03                       ; It would be better to keep the
+   147 00000083 00C3                          add bl,al                         ; value in range 0..2 instead of 0..3
+   148 00000085 B80700                        mov ax,0x0007
+   149 00000088 263801                        cmp byte[ES:di+bx],al
+   150 0000008B 7307                          jae .cantmove
+   151 0000008D 26886501                      mov byte[ES:di+1],ah
+   152 00000091 268801                        mov byte[ES:di+bx],al             ; This repne scasb should be in the
+   153                                       .cantmove:                         ; beginning of the loop, but it takes
+   154 00000094 F2AE                          repne scasb              ; <----  ; less bytes this way. That's why
+   155 00000096 41                            inc cx                            ; there are a few messy pixels in
+   156 00000097 E2E3                        loop .loop                          ; the bottom of the screen.
+   157                                  
+   158                                      ; generate new particles
+   159                                      ; mov byte[ES:bx+0x7B],al
+   160                                  
+   161                                  ; ---------------------------------------------------------------------------
+   162                                  ; end of particle effect
+   163                                  ; ---------------------------------------------------------------------------
+   164 00000099 E866FF                  	call delay3
+   165 0000009C E863FF                  	call delay3
+   166 0000009F E860FF                  	call delay3
+   167 000000A2 E85DFF                  	call delay3
+   168 000000A5 E85AFF                  	call delay3
+   169                                      ; hlt
+   170                                      ; hlt
+   171                                  
+   172 000000A8 5B                          pop bx
+   173                                  
+   174                                      ; repeat core loop unless ESC is pressed
+   175 000000A9 E460                        in al,0x60
+   176 000000AB 98                          cbw
+   177 000000AC 48                          dec ax
+   178 000000AD 7580                      jne core
+   179                                  
+   180                                    ; deinitialization: set textmode, kill sound player and exit to the OS
+   181 000000AF B003                      mov al,3
+   182                                  initialize:
+   183 000000B1 B0F4                      mov al,244
+   184                                    .clear:
+   185 000000B3 FFD5                        call bp
+   186 000000B5 48                          dec ax
+   187 000000B6 75FB                      jne .clear
+   188                                  
+   189 000000B8 BE[EA00]                  mov si,instrument
+   190 000000BB B107                      mov cl,7
+   191                                    .loop:
+   192 000000BD AD                          lodsw
+   193 000000BE FFD5                        call bp
+   194 000000C0 40                          inc ax
+   195 000000C1 FFD5                        call bp
+   196 000000C3 40                          inc ax
+   197 000000C4 FFD5                        call bp
+   198 000000C6 E2F5                      loop .loop
+   199                                  
+   200 000000C8 C3                        retn
+   201                                  adlibreg:
+   202                                  
+   203 000000C9 60                        pusha
+   204                                  
+   205 000000CA BA8803                    mov dx,0x388
+   206 000000CD EE                        out dx,al
+   207                                  
+   208 000000CE 68[D200]                  push word .here
+   209 000000D1 60                        pusha
+   210                                   .here:
+   211                                  
+   212 000000D2 88E0                      mov al,ah
+   213 000000D4 42                        inc dx
+   214 000000D5 EE                        out dx,al
+   215 000000D6 4A                        dec dx
+   216                                  
+   217                                   .timer:
+   218 000000D7 89D1                      mov cx,dx
+   219                                    .loop:
+   220 000000D9 EC                          in al,dx
+   221 000000DA E2FD                      loop .loop
+   222                                  
+   223 000000DC 61                        popa
+   224 000000DD C3                        retn
+   225                                  
+   226                                  
+   227                                  ; frequency table
+   228                                  ; I've got the idea of this 1 byte/note table from
+   229                                  ; Viznut/PWP's "Phygo" Assembly 1999 4kb intro source
+   230                                  freqtable:
+   231 000000DE 55                      db 0x157/4 ; C
+   232 000000DF 5A                      db 0x16B/4 ; C#
+   233 000000E0 60                      db 0x181/4 ; D
+   234 000000E1 66                      db 0x198/4 ; D#
+   235 000000E2 6C                      db 0x1B0/4 ; E
+   236 000000E3 72                      db 0x1CA/4 ; F
+   237 000000E4 79                      db 0x1E5/4 ; F#
+   238 000000E5 80                      db 0x202/4 ; G
+   239 000000E6 88                      db 0x220/4 ; G#
+   240 000000E7 90                      db 0x241/4 ; A
+   241 000000E8 98                      db 0x263/4 ; A#
+   242 000000E9 A1                      db 0x287/4 ; H
+   243                                  
+   244                                  ; (register, data) pairs
+   245                                  ; if there were at least two instruments, it would be smaller to use
+   246                                  ; (register, data1, data2) format, where data2 is written to register+3
+   247                                  instrument:
+   248 000000EA 20                      db 0x20
+   249 000000EB 20                      db 00100000b
+   250 000000EC 23                      db 0x23
+   251 000000ED A0                      db 10100000b
+   252 000000EE 60                      db 0x60
+   253 000000EF F8                      db 11111000b
+   254 000000F0 63                      db 0x63
+   255 000000F1 F3                      db 11110011b
+   256 000000F2 80                      db 0x80
+   257 000000F3 4A                      db 01001010b
+   258 000000F4 83                      db 0x83
+   259 000000F5 32                      db 00110010b
+   260 000000F6 C0                      db 0xC0
+   261 000000F7 06                      db 00000110b
+   262                                  
+   263                                  pattern:
+   264                                  note C ,3
+     3                              <1> %ifidni %1,C
+     4 000000F8 24                  <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   265                                  note C ,1
+     3                              <1> %ifidni %1,C
+     4 000000F9 0C                  <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   266                                  note C ,2
+     3                              <1> %ifidni %1,C
+     4 000000FA 18                  <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   267                                  note D#,3
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10 000000FB 27                  <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   268                                  note G ,3
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18 000000FC 2B                  <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   269                                  note G ,2
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18 000000FD 1F                  <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   270                                  note D#,3
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10 000000FE 27                  <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   271                                  note D#,2
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10 000000FF 1B                  <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   272                                  note F ,3
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14 00000100 29                  <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   273                                  note F ,1
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14 00000101 11                  <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   274                                  note F ,2
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14 00000102 1D                  <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   275                                  note F ,3
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14 00000103 29                  <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24                              <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   276                                  note A#,2
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24 00000104 22                  <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   277                                  note A#,0
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24 00000105 0A                  <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   278                                  note A#,1
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24 00000106 16                  <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif
+   279                                  note A#,2
+     3                              <1> %ifidni %1,C
+     4                              <1>  db (%2)*12 + 0
+     5                              <1> %elifidni %1,C#
+     6                              <1>  db (%2)*12 + 1
+     7                              <1> %elifidni %1,D
+     8                              <1>  db (%2)*12 + 2
+     9                              <1> %elifidni %1,D#
+    10                              <1>  db (%2)*12 + 3
+    11                              <1> %elifidni %1,E
+    12                              <1>  db (%2)*12 + 4
+    13                              <1> %elifidni %1,F
+    14                              <1>  db (%2)*12 + 5
+    15                              <1> %elifidni %1,F#
+    16                              <1>  db (%2)*12 + 6
+    17                              <1> %elifidni %1,G
+    18                              <1>  db (%2)*12 + 7
+    19                              <1> %elifidni %1,G#
+    20                              <1>  db (%2)*12 + 8
+    21                              <1> %elifidni %1,A
+    22                              <1>  db (%2)*12 + 9
+    23                              <1> %elifidni %1,A#
+    24 00000107 22                  <1>  db (%2)*12 + 10
+    25                              <1> %elifidni %1,H
+    26                              <1>  db (%2)*12 + 11
+    27                              <1> %else
+    28                              <1>  %error Invalid use of note macro.
+    29                              <1> %endif

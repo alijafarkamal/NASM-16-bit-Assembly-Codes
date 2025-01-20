@@ -5,8 +5,8 @@ right: dw 600
 mid: dw 550
 left: dw 500
 
-right_b: dw 2520
-mid_b: dw 2470
+right_b: dw 3000
+mid_b: dw 2790
 left_b: dw 2420
 
 oldisr: dd 0
@@ -20,12 +20,22 @@ ground_flag:db 0
 
 rec_colour: dw 0x3020
 
+f1: db 0
+f2: db 0
+f3: db 0
+
+
+l: db 7,5,3
+
+
+
 
 buffer: times 2000 dw 0
 gamename: db 'FLAPPY BIRD....$'
 name1: db 'Member1: Abdul Ghani , 23L-0761....$'
 name2: db 'Member2: Ali Shahzad , 23L-0719....$'
 smester: db '3rd Smester....$'
+sc: db 'Score: ',0
 
 
 message1: db 'Welcome to Flappy Bird'
@@ -42,8 +52,8 @@ length3: dw 49
 velocity db 0
 gravity db 1
 flap_strength db -3
-x: db 40        
-y: db 12        
+x: dw 40        
+y: dw 12        
 
 
 
@@ -70,8 +80,8 @@ prompt_message2: db 'Press E to end....$'
 
 
 
-    old_x db 0
-    old_y db 0
+old_x db 0
+old_y db 0
 
 update_screen:
 cli                    ; Disable interrupts
@@ -112,32 +122,54 @@ draw_bird:
     mov di, ax             
 
    
-   
+    mov bx, [es:di]
+    cmp bx, [rec_colour]  
+    je .collsionDetected
     mov word [es:di], 0x4020  
     add di, 2                 
 							  
-  
+    mov bx, [es:di]
+    cmp bx, [rec_colour]  
+    je .collsionDetected
     mov word [es:di], 0x4020  
     add di, 2                 
 
-    
-    mov word [es:di], 0x4020  
-	
+    mov bx, [es:di]
+    cmp bx, [rec_colour]  
+    je .collsionDetected
+    mov word [es:di], 0x4020 
 	ADD DI,160
+
+	mov bx, [es:di]
+    cmp bx, [rec_colour]  
+	
+	je .collsionDetected
 	MOV WORD[ES:DI],0x4020
 	
+
+    
 	mov ah,0x82
 	mov al,'^'
 	sub di, 2
 	MOV WORD[ES:DI],ax
 	
+    
 	SUB DI,2
+	mov bx, [es:di]
+    cmp bx, [rec_colour]  
+    je .collsionDetected
 	MOV WORD[ES:DI],0x4020
-	
-	
-	
+	 
+    jmp .end_update
 	
 
+.collsionDetected:
+    mov byte[cs:collision_flag],1
+    call unhook_keyboard_isr
+    call unhook_timer_isr
+    
+
+.end_update:
     pop di
     pop es
     pop bx
@@ -336,7 +368,7 @@ loop_ground:
     mov word [es:di], 0x6020 
     add di, 2                
     cmp di, 4000
-	mov word[es:3780],0x0720
+	;mov word[es:3780],0x0720
     jb loop_ground
 	
     popa
@@ -412,8 +444,8 @@ RECTANGLE:
     push si
     push di
 
-    mov di, [bp+4]        ; di = start address of the rectangle
-    mov dx, 0             ; dx = row counter
+    mov di, [bp+6]        ; di = start address of the rectangle
+    mov dx, [bp+4]             ; dx = row counter
 
 outerloop:
     mov cx, 0                
@@ -422,12 +454,13 @@ innerloop:
     mov word [es:di], ax 
     add di, 2            
     inc cx
-    cmp cx, 8      
+    cmp cx, 6      
     jne innerloop        
 
-    add di, 144          
-    inc dx
-    cmp dx, 5       
+    add di, 148  
+	
+    dec dx
+    cmp dx, 0       
     jne outerloop        
 
     pop di
@@ -437,7 +470,7 @@ innerloop:
     pop bx
     pop ax
     pop bp
-    ret 2             
+    ret 4             
 
 
 
@@ -471,7 +504,7 @@ update_bird_position:
     push di
 
     ; Check if update should be performed
-    MOV AL,byte [CS:release_flag]
+    MOV AL, [CS:release_flag]
     CMP AL, 1
     je NOUPDATE                    
 
@@ -488,64 +521,11 @@ update_bird_position:
     add al, [velocity]            
     mov [y], al
 
-    ; Set up video memory access
-    mov ax, 0xB800                
-    mov es, ax
-
+  
    
-    xor ax, ax                   
-    mov al, [x]
-    mov bl, 80                    
-    mul bl
-	mov ah,0x00
-    add ax, [y]                   
-    shl ax, 1                     
-    mov di, ax
-	;mov word [es:di],0x0720
-     mov bx, [es:di]
-    cmp bx, [rec_colour]           
-    je collision_detected
 
-    ; Check LOWER LEFT corner
-    xor ax, ax                    ; Clear ax
-    mov al, [x]
-    add al, 2                     ; Height is 3, so add 2 for bottom edge
-    mov bl, 80
-    mul bl
-	mov ah,0x00
-    add ax, [y]
-    shl ax, 1
-    mov di, ax
-    mov bx, [es:di]
-    cmp bx, [rec_colour]  
-    je collision_detected
 
-    ; Check UPPER RIGHT corner
-    xor ax, ax                    ; Clear ax
-    mov al, [x]
-    mov bl, 80
-    mul bl
-    add ax, [y]
-    add ax, 5                     ; Width is 6, so add 5 for right edge
-    shl ax, 1
-    mov di, ax
-    mov bx, [es:di]
-    cmp bx, [rec_colour]  
-    je collision_detected
-
-    ; Check LOWER RIGHT corner
-    xor ax, ax                    ; Clear ax
-    mov al, [x]
-    add al, 2                     ; Height is 3, so add 2 for bottom edge
-    mov bl, 80
-    mul bl
-    add ax, [y]
-    add ax, 5                     ; Width is 6, so add 5 for right edge
-    shl ax, 1
-    mov di, ax
-     mov bx, [es:di]
-    cmp bx, [rec_colour]  
-    je collision_detected
+    
 
     ; Boundary checks
     cmp byte [y], 3
@@ -565,7 +545,9 @@ no_limit_down:
     jmp end_update
 
 collision_detected:
-    mov byte[collision_flag], 1
+    call unhook_keyboard_isr
+    call unhook_timer_isr
+    mov byte[cs:collision_flag], 1
    
     jmp end_update                  
 
@@ -630,7 +612,7 @@ end_scr:
     push word [prompt_length]
     call print_message
 
-    
+   h: 
 call wait_for_key
   
 	
@@ -638,8 +620,10 @@ call wait_for_key
     je handle_endgame
 	cmp al,'E'
 	je handle_endgame
+	
+	jmp h
 
-	;call delay
+	
 
     
 	
@@ -845,7 +829,7 @@ highest_score_scr:
     push word [prompt_length2]
     call print_message
 
-    ; Wait for user input
+   h1:
     call wait_for_key
     cmp al, 'E'
     je endgame
@@ -855,7 +839,7 @@ highest_score_scr:
     je game_start
     cmp al, 's'
     je game_start
-    jmp highest_score_scr      
+    jmp h1    
 	
 	
     pop di
@@ -866,19 +850,122 @@ highest_score_scr:
     pop es
     ret
 
+print_current_score:
+    push ax
+    push bx
+    push cx
+    push dx
+    push es
+    push di
+
+    mov ax, 0xb800         ; Video memory segment
+    mov es, ax
+    xor di, di             ; Clear DI
+	
+	 mov al, 80             ; Number of columns per row
+	mov bl,1
+    mul bl                 ; Multiply by row number (2nd row)
+    add ax, 24             ; Add column number (30th column)
+    shl ax, 1              ; Multiply by 2 (each character is 2 bytes)
+    mov di, ax             ; Set DI to the correct position
+	mov si, sc             ; Address of "score" string
+  .print_score_word:
+    lodsb                  ; Load next character from the string
+    cmp al, 0              ; Check if end of string (null terminator)
+    je hell        ; If null terminator, jump to print number
+    mov ah, 0x60           ; Attribute byte (black background, white text)
+    stosw                  ; Store character and attribute at [ES:DI]
+    jmp .print_score_word   ; Repeat for the next character
+	
+	
+hell:
+    mov al, 80             ; Number of columns per row
+	mov bl,1
+    mul bl                 ; Multiply by row number (2nd row)
+    add ax, 30             ; Add column number (30th column)
+    shl ax, 1              ; Multiply by 2 (each character is 2 bytes)
+    mov di, ax             ; Set DI to the correct position
+
+    mov ax, [score]        ; Load current score
+    call int_to_str        ; Convert score to string
+
+    mov cx, 5              ; Length of the score string
+print_loop:
+    lodsb                  ; Load next character from score string
+    mov ah, 0x60           ; Attribute byte (black background, white text)
+    stosw                  ; Store character and attribute at [ES:DI]
+    loop print_loop        ; Repeat for all characters
+
+    pop di
+    pop es
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+int_to_str:
+    ; Converts the integer in AX to a string in DS:SI
+    ; Assumes AX contains the integer and DS:SI points to the buffer
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov cx, 0              ; Initialize digit count
+    mov bx, 10             ; Divisor for decimal conversion
+
+.convert_loop:
+    xor dx, dx             ; Clear DX
+    div bx                 ; Divide AX by 10, quotient in AX, remainder in DX
+    add dl, '0'            ; Convert remainder to ASCII
+    push dx                ; Push remainder onto stack
+    inc cx                 ; Increment digit count
+    test ax, ax            ; Check if quotient is zero
+    jnz .convert_loop      ; Repeat if quotient is not zero
+
+    mov si, buffer         ; Load buffer address
+    add si, cx             ; Move SI to the end of the string
+    mov byte [si], 0       ; Null-terminate the string
+
+.pop_digits:
+    pop dx                 ; Pop digit from stack
+    dec si                 ; Move SI back
+    mov [si], dl           ; Store digit in buffer
+    loop .pop_digits       ; Repeat for all digits
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+print:
+           
+
+    mov dx, sc 	
+    mov ah, 9 		
+    int 0x21 
+	
+	ret
+
+
 
 game_loop:
 game:
    
     call delay
     call delay
+    call delay
+    
     call wait_for_retrace
-	call update_screen 
+	call update_screen
+	
 
     call background
     call ground
     call uped
-
+	
+call print_current_score
        
 	   
     ; mov ah, 01h            
@@ -907,6 +994,9 @@ game:
 skip1:
     mov ax, [right]
     push ax
+	
+	mov ax,4
+	push ax
     
     call RECTANGLE
 	
@@ -922,6 +1012,9 @@ skip1:
 skip2:
     mov ax, [mid]
     push ax
+	
+	mov ax,6
+	push ax
    
     call RECTANGLE
 
@@ -934,29 +1027,36 @@ skip2:
 skip3:
     mov ax, [left]
     push ax
+	
+	mov ax,3
+	push ax
    
     call RECTANGLE
 
     sub word [right_b], 2
-    cmp word [right_b], 2400
+    cmp word [right_b], 2880
     jge skip4
 	
-    mov word [right_b], 2544
+    mov word [right_b], 3024
 
 skip4:
     mov ax, [right_b]
     push ax
+	mov ax,2
+	push ax
    
     call RECTANGLE
 
     sub word [mid_b], 2
-    cmp word [mid_b], 2400
+    cmp word [mid_b], 2720
     jge skip5
-    mov word [mid_b], 2544
+    mov word [mid_b], 2864
 
 skip5:
     mov ax, [mid_b]
     push ax
+	mov ax,3
+	push ax
     
     call RECTANGLE
 
@@ -968,15 +1068,17 @@ skip5:
 skip6:
     mov ax, [left_b]
     push ax
+	
+	mov ax,5
+	push ax
    
     call RECTANGLE
 	
 	no_key_pressed:
-	
+	 
 	call update_bird_position
-
     call clear_bird
-    call draw_bird
+   call draw_bird
 	
 	
 	cmp byte[ground_flag],1
@@ -1122,6 +1224,8 @@ game_start:
 	call ground
 	mov  ax, [right]
     push ax
+	mov ax,4
+	push ax
 	
 	call RECTANGLE
 	
@@ -1129,6 +1233,8 @@ game_start:
 	
 	 mov ax, [right_b] 
     push ax
+	mov ax,2
+	push ax
 	call RECTANGLE
 
 	
@@ -1188,6 +1294,40 @@ handle_endgame:
     call unhook_timer_isr  
 	call clear
     jmp endgame
+	
+	
+timer:
+    push ax
+    push bx
+    push cx
+    push dx
+
+    mov al, [cs:flag]
+    cmp al, 1
+    je timer_done         
+   
+    inc word [cs:tick_count]
+
+    cmp word [cs:tick_count], 18
+    jne timer_done            
+    
+   
+    mov word [cs:tick_count], 0
+    mov byte [cs:release_flag], 1
+    CALL update_bird_position
+
+timer_done:
+   
+    mov al, 0x20
+    out 0x20, al
+
+    
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+
+    iret
 	
 	
 print_string:
@@ -1252,46 +1392,17 @@ show_instructions:
 	CALL move_to_next_line
 	mov si, line_9_msg
     call print_string
+	
+	mov byte[counter],8
 
     
     call wait_for_key
 
     
-    jmp wapis
+    jmp  wapis
 	
 
-timer:
-    push ax
-    push bx
-    push cx
-    push dx
 
-    mov al, [cs:flag]
-    cmp al, 1
-    je timer_done         
-   
-    inc word [cs:tick_count]
-
-    cmp word [cs:tick_count], 18
-    jne timer_done            
-    
-   
-    mov word [cs:tick_count], 0
-    mov byte [cs:release_flag], 1
-    CALL update_bird_position
-
-timer_done:
-   
-    mov al, 0x20
-    out 0x20, al
-
-    
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-
-    iret
                      
 
 
@@ -1324,8 +1435,8 @@ line_4_msg db '4. PRESS ESC TO PAUSE THE GAME.', 0
 line_5_msg db '5. PRESS I TO VIEW INSTRUCTIONS AGAIN.', 0
 line_6_msg db '6. PRESS E TO exit THE GAME.', 0
 line_7_msg db '7. TRY TO SCORE THE HIGHEST POINTS!', 0
-line_8_msg db 'GOOD LUCK AND HAVE FUN!', 0
-line_9_msg db 'Press any key to continue', 0
+line_8_msg db '-> GOOD LUCK AND HAVE FUN!', 0
+line_9_msg db '-> Press any key to continue', 0
 
 
 counter: db 8
